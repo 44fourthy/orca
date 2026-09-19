@@ -121,7 +121,12 @@ export default {...base, test: {...base.test, include: ${JSON.stringify(includes
   const before = await run('before', baselineConfig)
   const after = await run('after', fixedConfig)
   const passed =
-    before.failed === 12 && before.passed === 6 && after.passed === 18 && after.failed === 0
+    before.exitCode === 1 &&
+    before.failed === 16 &&
+    before.passed === 6 &&
+    after.exitCode === 0 &&
+    after.passed === 22 &&
+    after.failed === 0
   console.log(
     JSON.stringify(
       {

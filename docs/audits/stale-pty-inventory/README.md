@@ -14,7 +14,7 @@ ORCA_BACKGROUND_LAUNCH=1 node docs/audits/stale-pty-inventory/reproduce.mjs
 
 The script runs the actual runtime inventory, registration, spawn, and exit methods with deferred provider responses. It uses temporary Vitest configuration to reverse only `fix.patch` for the baseline, leaves checkout files untouched, and removes its temporary files. It launches no app, enumerates no real processes, and installs nothing. Node subprocesses use the repository's portable `runProcess` implementation.
 
-`results.json` records source hashes and the before/after result: **12 failing / 6 passing tests before; all 18 passing after**.
+`results.json` records source hashes and the before/after result: **16 failing / 6 passing tests before; all 22 passing after**.
 
 ## Retaining and ownership path
 
@@ -32,7 +32,7 @@ Accepted spawn, registration, and exit events now invalidate pending inventory f
 
 The response is rejected as a whole, so filtered rows cannot become false evidence of absence. A targeted worktree read retries at most once using its original deadline; another invalidation yields an unknown result. A targeted different-host query remains valid. Aggregate requests conservatively reject when a provider changes during the request. This can reject a response that happened to include the newly admitted process; a subsequent fresh request remains authoritative.
 
-The tests cover stale positive rows, stale absence, unknown-at-request-start spawns, registrations with no incarnation, ignored predecessor EXIT, exported handle preservation, fresh discovery and replacement, local/SSH routing, concurrent provider generations, and bounded retries. Existing partial-relay and liveness tests verify that failed contact is not promoted to process death. The change adds no permanent per-PTY registry and changes no wire fields or liveness vocabulary.
+The tests cover stale positive rows, stale absence, unknown-at-request-start spawns, registrations with no incarnation, ignored predecessor EXIT, exported handle preservation, fresh discovery and replacement, local/SSH routing (including SSH aliases with spaces, `@`, and `:`), concurrent provider generations, and bounded retries. Existing partial-relay and liveness tests verify that failed contact is not promoted to process death. The change adds no permanent per-PTY registry and changes no wire fields or liveness vocabulary.
 
 ## Version and scope
 

@@ -44,15 +44,36 @@ describe('lifecycle invalidation respects inventory scope and retry bounds', () 
     })
   })
 
-  it('uses explicit host ownership for a legacy unqualified PTY ID', async () => {
-    const reply = deferred<PtyProcessInfo[]>()
-    const { runtime } = createInventoryRuntime(() => reply.promise)
-    const pending = runtime.read('host-a')
-    runtime.registerPty('legacy-child', WORKTREE, 'host-a')
-    reply.resolve([processRow('legacy-child')])
-    expect(await pending).toBeNull()
-    expect(runtime.capture('legacy-child').connected).toBe(true)
-  })
+  it.each(['host-a', 'deploy@10.0.0.4:2222', 'ssh target'])(
+    'uses explicit host ownership for a legacy unqualified PTY ID on %s',
+    async (connectionId) => {
+      const reply = deferred<PtyProcessInfo[]>()
+      const { runtime } = createInventoryRuntime(() => reply.promise)
+      const pending = runtime.read(connectionId)
+      runtime.registerPty('legacy-child', WORKTREE, connectionId)
+      reply.resolve([processRow('legacy-child')])
+      expect(await pending).toBeNull()
+      expect(runtime.capture('legacy-child').connected).toBe(true)
+    }
+  )
+
+  it.each(['deploy@10.0.0.4:2222', 'ssh target'])(
+    'rejects stale inventory for an encoding-sensitive qualified PTY ID on %s',
+    async (connectionId) => {
+      const reply = deferred<PtyProcessInfo[]>()
+      const { runtime } = createInventoryRuntime(() => reply.promise)
+      const ptyId = `ssh:${connectionId}@@child`
+      runtime.registerPty(ptyId, WORKTREE, connectionId)
+      const pending = runtime.read(connectionId)
+      runtime.onPtySpawned(ptyId, SUCCESSOR)
+      reply.resolve([processRow(ptyId)])
+      expect(await pending).toBeNull()
+      expect(runtime.capture(ptyId)).toMatchObject({
+        connected: true,
+        incarnationId: SUCCESSOR
+      })
+    }
+  )
 
   it('does not route an unqualified local admission into an SSH query', async () => {
     const reply = deferred<PtyProcessInfo[]>()

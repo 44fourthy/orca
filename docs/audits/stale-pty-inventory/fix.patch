@@ -1,5 +1,5 @@
 diff --git a/src/main/runtime/orca-runtime-invalidate-all-handles-for-pty.ts b/src/main/runtime/orca-runtime-invalidate-all-handles-for-pty.ts
-index 448fb2a00f..9d6e5d56ca 100644
+index 448fb2a00fb..9d6e5d56ca4 100644
 --- a/src/main/runtime/orca-runtime-invalidate-all-handles-for-pty.ts
 +++ b/src/main/runtime/orca-runtime-invalidate-all-handles-for-pty.ts
 @@ -1,6 +1,12 @@
@@ -47,7 +47,7 @@ index 448fb2a00f..9d6e5d56ca 100644
      if (
        existingPty &&
 diff --git a/src/main/runtime/orca-runtime-on-pty-exit.ts b/src/main/runtime/orca-runtime-on-pty-exit.ts
-index 33e1dfc507..659ee43929 100644
+index 6ddf877f87c..ce24ed65d98 100644
 --- a/src/main/runtime/orca-runtime-on-pty-exit.ts
 +++ b/src/main/runtime/orca-runtime-on-pty-exit.ts
 @@ -30,6 +30,7 @@ export class OrcaRuntimeWithOnPtyExit extends OrcaRuntimeWithOnClientDisconnecte
@@ -58,8 +58,24 @@ index 33e1dfc507..659ee43929 100644
      // A bare exit code is not enough to establish why a process ended: older
      // daemons and SSH relays can report 0 for crashes and wrapper exits.
      const observedCause = options.cause ?? resolveUnreportedExitCause(exitCode)
+diff --git a/src/main/runtime/orca-runtime-refresh-pty-worktree-records-with-controller-inventory.ts b/src/main/runtime/orca-runtime-refresh-pty-worktree-records-with-controller-inventory.ts
+index aca67f67ba2..930907da120 100644
+--- a/src/main/runtime/orca-runtime-refresh-pty-worktree-records-with-controller-inventory.ts
++++ b/src/main/runtime/orca-runtime-refresh-pty-worktree-records-with-controller-inventory.ts
+@@ -55,7 +55,10 @@ export class OrcaRuntimeWithRefreshPtyWorktreeRecordsWithControllerInventory ext
+     }
+     const inventoryGeneration = this.ptyControllerInventorySequence + 1
+     this.ptyControllerInventorySequence = inventoryGeneration
+-    const providerKey = typeof connectionId === 'string' ? `ssh:${connectionId}` : 'local'
++    const providerKey =
++      typeof connectionId === 'string'
++        ? toSshExecutionHostId(connectionId)
++        : LOCAL_EXECUTION_HOST_ID
+     const livenessObservationAtStart = this.ptyLivenessObservationSequence
+     if (connectionId === undefined) {
+       this.ptyControllerAggregateInventoryGeneration = inventoryGeneration
 diff --git a/src/main/runtime/orca-runtime-register-pty.ts b/src/main/runtime/orca-runtime-register-pty.ts
-index dae2519ca9..2d36a18a1e 100644
+index dae2519ca9f..2d36a18a1e0 100644
 --- a/src/main/runtime/orca-runtime-register-pty.ts
 +++ b/src/main/runtime/orca-runtime-register-pty.ts
 @@ -26,6 +26,7 @@ export class OrcaRuntimeWithRegisterPty extends OrcaRuntimeWithInvalidateAllHand
