@@ -320,6 +320,7 @@ describe('EditorPanelHeaderPath', () => {
 
   it('keeps an open listing mounted when unrelated file state changes', async () => {
     const file = makeOpenFile({
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: this fixture only needs a stable opaque owner token.
       operationProvenance: { marker: 'same-owner' } as never
     })
     const { rerender } = render(
@@ -338,6 +339,7 @@ describe('EditorPanelHeaderPath', () => {
         activeFile={{
           ...file,
           isDirty: true,
+          // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: this fixture preserves the mocked owner token.
           operationProvenance: { ...file.operationProvenance } as never
         }}
         canShowMarkdownPreview={false}
@@ -353,6 +355,7 @@ describe('EditorPanelHeaderPath', () => {
   it('refuses to open a stale listing after the file owner changes', async () => {
     const file = makeOpenFile({
       externalSshTargetId: 'ssh-1',
+      // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: this fixture only needs a stable opaque owner token.
       operationProvenance: { marker: 'ssh-1' } as never
     })
     const { rerender } = render(
@@ -371,6 +374,7 @@ describe('EditorPanelHeaderPath', () => {
         activeFile={{
           ...file,
           externalSshTargetId: 'ssh-2',
+          // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: this fixture changes the mocked owner token.
           operationProvenance: { marker: 'ssh-2' } as never
         }}
         canShowMarkdownPreview={false}

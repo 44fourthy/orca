@@ -178,7 +178,7 @@ export function EditorHeaderPathBreadcrumbs({
               </button>
             </PopoverTrigger>
             {listing?.segmentId === segment.id ? (
-              <PopoverContent align="start" side="bottom" sideOffset={4} className="w-auto p-0">
+              <PopoverContent align="start" side="bottom" sideOffset={4} className="w-auto">
                 <EditorHeaderPathDirectoryMenu
                   loadState={loadState}
                   directoryAbsolutePath={listing.directoryAbsolutePath}
