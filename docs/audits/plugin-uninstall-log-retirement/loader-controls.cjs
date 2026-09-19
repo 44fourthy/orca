@@ -9,7 +9,11 @@ const contexts = parsePatch(readText(path.join(__dirname, 'dependency-context.pa
 const mainSources = new Map()
 for (const patch of contexts) {
   const name = patch.newFileName.slice(2)
-  const original = applyPatch(readText(path.join(root, name)), reversePatch(patch))
+  const current = readText(path.join(root, name))
+  const original =
+    sha256(current) === versions.sources[name].main
+      ? current
+      : applyPatch(current, reversePatch(patch))
   assert.notEqual(original, false)
   assert.equal(sha256(original), versions.sources[name].main)
   mainSources.set(path.join(root, name), original)

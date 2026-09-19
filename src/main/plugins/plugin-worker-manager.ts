@@ -72,7 +72,10 @@ export class PluginWorkerManager {
     return new Map(this.knownSpecs)
   }
 
-  async ensureActive(spec: PluginWorkerSpawnSpec): Promise<PluginWorkerHandle> {
+  async ensureActive(
+    spec: PluginWorkerSpawnSpec,
+    assertApproved: () => void = () => undefined
+  ): Promise<PluginWorkerHandle> {
     if (this.disposed) {
       throw new Error('plugin workers are shut down')
     }
@@ -80,6 +83,8 @@ export class PluginWorkerManager {
       throw new Error(`plugin ${spec.pluginKey} is errored after repeated failures`)
     }
     for (;;) {
+      // Removal may finish while a stale revision waits for its worker to stop.
+      assertApproved()
       const existing = this.workers.get(spec.pluginKey)
       const pending = this.activations.get(spec.pluginKey)
       const activeSpec = existing?.spec ?? pending?.spec

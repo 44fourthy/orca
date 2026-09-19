@@ -14,8 +14,8 @@
     "sources.cjs": "a04aa4c72c9eeaf2a1814e5f0919bc0128f8c7a605a43ab9e5c6ddaf2ece2f38",
     "scenario.test.mjs": "836c185a99997942b5d0461dab5b1f08efac12da68e04f7891ddfda2dd09a7be",
     "phase.config.mjs": "eceb5c74c19fed28cfa9b0341e571369dca1f4e7f2f5486b549cb179fbae6fa9",
-    "source-versions.json": "533a02e076fb6f9ae6665ddf6371edd6e61532b2a2890a4f129da1a9c56fe1ee",
-    "fix.patch": "c4d233307fb6903d012f8288d1da5bb6172b872bc7f3220625a19607d97d87d0",
+    "source-versions.json": "3440c92fda22e09b82cbc6818ce51f99359ad5e66326a4bb64d092a428489cfd",
+    "fix.patch": "ed09db9f0284470378f7f82eacb31c7ab91a9c72a99559e6a15af6cf20c9be61",
     "dependency-context.patch": "1b2886e2bc2817bc0a10eab93911984edc0366b170208bf4e8a3d1b3044c6b62"
   },
   "sourceHashes": {
@@ -153,9 +153,9 @@
     "src/main/plugins/plugin-uninstall-log-retention.test.ts": "3ff50988b9951a922332e0ceab9bfd48ac5f4f0a2f44b6ba6738df24926ba0e2",
     "src/main/plugins/plugin-uninstall-worker-fixture.ts": "9990ec5738f4ddd5369cde4518b08c4c4580daba374be7b05d8be381a69777e6",
     "src/main/plugins/plugin-vm-recipe-registry.ts": "1d8cf888bc7e3af83aef8d2b5a21434edca9c21769cb7f1828b27db33dbc9716",
-    "src/main/plugins/plugin-worker-controller.ts": "d4b539cbbc4358b6ce59b1045fb6790ee34415b8c5817f8a5d38691177dfda03",
+    "src/main/plugins/plugin-worker-controller.ts": "b4d27a9316af36422108e7fc2b63f1e699d6a64f3dcb11b74dae2ec82cdadd19",
     "src/main/plugins/plugin-worker-env.ts": "fec2b1710cd37e47384b81976113835236be0da1a07fdf462c737a5fd24207da",
-    "src/main/plugins/plugin-worker-manager.ts": "78360d3032a26c80f4cd21dcc80d267f5ed36b0855e110cb5c056fb420509357",
+    "src/main/plugins/plugin-worker-manager.ts": "0ac2c03536adc15febde187e3f3289c284151a803d2818b1c178c7baf694f2b2",
     "src/main/plugins/plugin-worker-output-buffer.ts": "4c7fd9e66d1b2aa948dab72196c3e6fd9df7c646dcf0a15279ee5520bb0a2a7b",
     "src/main/plugins/plugin-worker-reconciliation.ts": "43bb77565c86a2e209195aa3f55b7cf5bd78f668009318a0894508707b1769bc",
     "src/main/plugins/plugin-worker-restart-loop.ts": "76cb5df1de7122b42dda29a418674394412b64da1ddccf2501b4a5eb0b2284cc",

@@ -674,7 +674,7 @@
     },
     "src/main/plugins/plugin-worker-controller.ts": {
       "before": "94a788da40bd6a39e2722f024f124a6aac87d114433f38e4fbd336456f2e7aaf",
-      "fixed": "d4b539cbbc4358b6ce59b1045fb6790ee34415b8c5817f8a5d38691177dfda03",
+      "fixed": "b4d27a9316af36422108e7fc2b63f1e699d6a64f3dcb11b74dae2ec82cdadd19",
       "main": "94a788da40bd6a39e2722f024f124a6aac87d114433f38e4fbd336456f2e7aaf"
     },
     "src/main/plugins/plugin-worker-env.ts": {
@@ -684,7 +684,7 @@
     },
     "src/main/plugins/plugin-worker-manager.ts": {
       "before": "b95bfac2b674b6ecf6da6ba0d08b98596e67f05bf0dff02e8133049b4d5a1e70",
-      "fixed": "78360d3032a26c80f4cd21dcc80d267f5ed36b0855e110cb5c056fb420509357",
+      "fixed": "0ac2c03536adc15febde187e3f3289c284151a803d2818b1c178c7baf694f2b2",
       "main": "b95bfac2b674b6ecf6da6ba0d08b98596e67f05bf0dff02e8133049b4d5a1e70"
     },
     "src/main/plugins/plugin-worker-output-buffer.ts": {

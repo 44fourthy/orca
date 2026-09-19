@@ -14,8 +14,8 @@
     "sources.cjs": "a04aa4c72c9eeaf2a1814e5f0919bc0128f8c7a605a43ab9e5c6ddaf2ece2f38",
     "scenario.test.mjs": "836c185a99997942b5d0461dab5b1f08efac12da68e04f7891ddfda2dd09a7be",
     "phase.config.mjs": "eceb5c74c19fed28cfa9b0341e571369dca1f4e7f2f5486b549cb179fbae6fa9",
-    "source-versions.json": "533a02e076fb6f9ae6665ddf6371edd6e61532b2a2890a4f129da1a9c56fe1ee",
-    "fix.patch": "c4d233307fb6903d012f8288d1da5bb6172b872bc7f3220625a19607d97d87d0",
+    "source-versions.json": "3440c92fda22e09b82cbc6818ce51f99359ad5e66326a4bb64d092a428489cfd",
+    "fix.patch": "ed09db9f0284470378f7f82eacb31c7ab91a9c72a99559e6a15af6cf20c9be61",
     "dependency-context.patch": "1b2886e2bc2817bc0a10eab93911984edc0366b170208bf4e8a3d1b3044c6b62"
   },
   "sourceHashes": {

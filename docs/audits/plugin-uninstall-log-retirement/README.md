@@ -51,6 +51,10 @@ After the rename, 23 checks passed across the three uninstall suites, the child-
 
 Successful uninstall now discards the previous installation's 200-row in-memory history. The settings UI already removes the deleted plugin's log row, but reinstalling the same key no longer resurrects that old history. This is an explicit lifetime policy change, not a claim of identical observable output in every uninstall/reinstall sequence.
 
+## Review correction, 2026-09-18
+
+Activation rechecks approval after waiting for an old revision to stop. A concurrent successful uninstall therefore cannot be followed by a stale activation capturing a new log ring or starting another worker. The controller regression holds the old worker's disposal, completes deactivation and log retirement, then releases disposal and verifies that neither a worker nor a log capture follows. All 35 tests across the manager, controller and three uninstall suites passed; ordinary lint and Node typecheck passed. The before/fixed comparisons and loader controls were rerun with refreshed source hashes. The loader control now accepts both documented publication layouts: dependencies already carrying the fenced context and dependencies still at the named main source.
+
 ## Remaining limits
 
 This explains a code-level main-process owner that survives successful uninstalls. It does not establish plugin usage, uninstall rate, field allocation size, or attribution for #19831 or any other incident. Installed, disabled, crashed, development and externally deleted plugin histories are not comprehensively retired by this change. Sequential filesystem deletion is not a rollback transaction; failure retains discovery/history for retry. The in-process mutation queues do not make external or cross-process lockfile edits atomic. If a bundled successor appears during shutdown, the old worker may already have stopped before removal is refused; the successor remains installed and can activate afterward.
