@@ -14,6 +14,18 @@ import {
 } from './wsl-transcript-fs-process-dispatch'
 import type { WslTranscriptFsReusableProcessCall } from './wsl-transcript-fs-process-protocol'
 import { wslTranscriptFsLaneKey } from './wsl-transcript-fs-route'
+import { isSshTranscriptPath } from './ssh-transcript-path'
+import {
+  isSshTranscriptFsHandle,
+  sshTranscriptAccess,
+  sshTranscriptLstat,
+  sshTranscriptOpen,
+  sshTranscriptRead,
+  sshTranscriptReaddir,
+  sshTranscriptReadFile,
+  sshTranscriptStat,
+  type SshTranscriptFsHandle
+} from './ssh-transcript-fs'
 
 /** Never nest a gated call inside another — that deadlocks the scan slot. */
 
@@ -21,7 +33,7 @@ import { wslTranscriptFsLaneKey } from './wsl-transcript-fs-route'
 // healthy-but-slow transcript is not false-failed by a whole-file timeout.
 export const WSL_TRANSCRIPT_READ_CHUNK_BYTES = 1024 * 1024
 
-export type TranscriptFileHandle = FileHandle | WslTranscriptFsProcessHandle
+export type TranscriptFileHandle = FileHandle | WslTranscriptFsProcessHandle | SshTranscriptFsHandle
 
 // One request object drives both the gate's dedupe/route key and the child
 // call, so the two can never disagree on the operation or path.
@@ -49,6 +61,9 @@ export function wslGatedAccess(
   priority: WslTranscriptFsTaskPriority,
   signal?: AbortSignal
 ): Promise<boolean> {
+  if (isSshTranscriptPath(path)) {
+    return sshTranscriptAccess(path)
+  }
   return runReusableFsOperation({ operation: 'access', path }, priority, signal, async () => {
     await access(path)
     return true
@@ -60,6 +75,9 @@ export function wslGatedStat(
   priority: WslTranscriptFsTaskPriority,
   signal?: AbortSignal
 ): Promise<Stats> {
+  if (isSshTranscriptPath(path)) {
+    return sshTranscriptStat(path)
+  }
   return runReusableFsOperation({ operation: 'stat', path }, priority, signal, () => stat(path))
 }
 
@@ -68,6 +86,9 @@ export function wslGatedLstat(
   priority: WslTranscriptFsTaskPriority,
   signal?: AbortSignal
 ): Promise<Stats> {
+  if (isSshTranscriptPath(path)) {
+    return sshTranscriptLstat(path)
+  }
   return runReusableFsOperation({ operation: 'lstat', path }, priority, signal, () => lstat(path))
 }
 
@@ -76,6 +97,9 @@ export function wslGatedReaddir(
   priority: WslTranscriptFsTaskPriority,
   signal?: AbortSignal
 ): Promise<Dirent[]> {
+  if (isSshTranscriptPath(path)) {
+    return sshTranscriptReaddir(path)
+  }
   return runReusableFsOperation({ operation: 'readdir', path }, priority, signal, () =>
     readdir(path, { withFileTypes: true })
   )
@@ -87,6 +111,9 @@ export function wslGatedReadFile(
   priority: WslTranscriptFsTaskPriority,
   signal?: AbortSignal
 ): Promise<string> {
+  if (isSshTranscriptPath(path)) {
+    return sshTranscriptReadFile(path)
+  }
   return runReusableFsOperation({ operation: 'readfile', path, encoding }, priority, signal, () =>
     readFile(path, encoding)
   )
@@ -98,6 +125,9 @@ export function wslGatedOpen(
   priority: WslTranscriptFsTaskPriority,
   signal?: AbortSignal
 ): Promise<TranscriptFileHandle> {
+  if (isSshTranscriptPath(path)) {
+    return sshTranscriptOpen(path)
+  }
   if (!isWslUncPath(path)) {
     return open(path, 'r')
   }
@@ -131,6 +161,9 @@ export function wslGatedRead(
   priority: WslTranscriptFsTaskPriority,
   signal?: AbortSignal
 ): Promise<{ bytesRead: number; buffer: Buffer }> {
+  if (isSshTranscriptFsHandle(handle)) {
+    return sshTranscriptRead(handle, buffer, offset, length, position, signal)
+  }
   // Handle kind decides before path spelling: a process-owned handle must never
   // hit the FileHandle branch even if a caller re-derives the path off-UNC.
   if (!isWslUncPath(path) && !isWslTranscriptFsProcessHandle(handle)) {
@@ -152,6 +185,10 @@ export function wslGatedRead(
 
 /** Never gated; process-owned handles retire on the client's bounded deadline. */
 export function closeTranscriptHandle(handle: TranscriptFileHandle, path: string): Promise<void> {
+  // Relay reads are stateless; there is nothing on the host to release.
+  if (isSshTranscriptFsHandle(handle)) {
+    return Promise.resolve()
+  }
   if (isWslTranscriptFsProcessHandle(handle)) {
     void closeWslTranscriptFsProcess(handle).catch(() => {})
     return Promise.resolve()
@@ -275,7 +312,7 @@ export function openTranscriptReadStream(
   priority: WslTranscriptFsTaskPriority,
   signal?: AbortSignal
 ): Readable {
-  if (!isWslUncPath(path)) {
+  if (!isWslUncPath(path) && !isSshTranscriptPath(path)) {
     // Node destroys the stream with an AbortError on abort, matching how the
     // gated branch surfaces cancellation to the same consumers.
     return createReadStream(path, { ...options, signal })

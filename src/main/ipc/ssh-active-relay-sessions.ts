@@ -1,3 +1,4 @@
+import { setSshTranscriptRemoteHomeResolver } from '../native-chat/ssh-transcript-remote-home'
 import type { SshRelaySession } from '../ssh/ssh-relay-session'
 import { setSshActiveMultiplexerResolver } from '../ssh/ssh-target-registry'
 import { setWorktreeRemovalSshHostHomeResolver } from '../worktree-removal-execution-host-route'
@@ -22,3 +23,4 @@ export function getActiveSshHostHomeDirectory(targetId: string): string | null {
 }
 
 setWorktreeRemovalSshHostHomeResolver(getActiveSshHostHomeDirectory)
+setSshTranscriptRemoteHomeResolver(getActiveSshHostHomeDirectory)

@@ -74,7 +74,7 @@ describe('decideInitialAgentTabViewMode', () => {
     ).toBe('chat')
   })
 
-  it('keeps Model-A SSH omp in the terminal view but opens it locally', () => {
+  it('opens Model-A SSH omp in chat like a local one (transcript read over the relay)', () => {
     const forConnection = (connectionId: string | null): Tab['viewMode'] =>
       decideInitialAgentTabViewMode({
         experimentalNativeChat: true,
@@ -82,17 +82,25 @@ describe('decideInitialAgentTabViewMode', () => {
         agent: 'omp',
         nativeChatTranscriptIsLocalReadable: isNativeChatTranscriptLocalReadable(connectionId)
       })
-    expect(forConnection('ssh-target-1')).toBeUndefined()
+    expect(forConnection('ssh-target-1')).toBe('chat')
     expect(forConnection(null)).toBe('chat')
   })
 
-  it('keeps Model-A SSH Grok in the terminal view', () => {
+  it('opens Model-A SSH Grok in chat, keeping the unresolved-host case in the terminal', () => {
     expect(
       decideInitialAgentTabViewMode({
         experimentalNativeChat: true,
         openAgentTabsInChatByDefault: true,
         agent: 'grok',
         nativeChatTranscriptIsLocalReadable: isNativeChatTranscriptLocalReadable('ssh-target-1')
+      })
+    ).toBe('chat')
+    expect(
+      decideInitialAgentTabViewMode({
+        experimentalNativeChat: true,
+        openAgentTabsInChatByDefault: true,
+        agent: 'grok',
+        nativeChatTranscriptIsLocalReadable: isNativeChatTranscriptLocalReadable(undefined)
       })
     ).toBeUndefined()
     expect(

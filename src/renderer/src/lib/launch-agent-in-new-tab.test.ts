@@ -290,7 +290,7 @@ describe('launchAgentInNewTab', () => {
     })
   })
 
-  it('keeps Model-A SSH Grok launches in terminal mode', async () => {
+  it('opens Model-A SSH Grok launches in chat mode (transcript read over the relay)', async () => {
     store.settings = {
       agentCmdOverrides: {},
       agentDefaultArgs: {},
@@ -307,7 +307,8 @@ describe('launchAgentInNewTab', () => {
 
     expect(mockCreateTab).toHaveBeenCalledWith('wt-1', undefined, undefined, {
       launchAgent: 'grok',
-      quickCommandLabel: undefined
+      quickCommandLabel: undefined,
+      viewMode: 'chat'
     })
   })
 

@@ -129,7 +129,8 @@ describe('buildAgentLaunchRouteInput', () => {
     })
     expect(input.executionHostId).toBe('ssh:build-box')
     expect(input.projectRuntime).toBeUndefined()
-    expect(input.nativeChatTranscriptIsLocalReadable).toBe(false)
+    // The fork reads SSH transcripts over the relay, so the pane is chat-capable.
+    expect(input.nativeChatTranscriptIsLocalReadable).toBe(true)
     expect(mocks.getLocalProjectExecutionRuntimeContext).not.toHaveBeenCalled()
     expect(mocks.getLocalRepoProjectExecutionRuntimeContext).not.toHaveBeenCalled()
     expect(
@@ -172,7 +173,7 @@ describe('buildAgentLaunchRouteInput', () => {
       'an explicit host',
       { kind: 'git-worktree', repoId: 'repo-1', executionHostId: 'ssh:box' },
       'ssh:box',
-      false
+      true
     ],
     [
       'a runtime-owned SSH host',

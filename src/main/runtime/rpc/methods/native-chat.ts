@@ -7,6 +7,8 @@ import {
 } from '../../../native-chat/transcript-watch'
 import { defineMethod, defineStreamingMethod, type RpcContext } from '../core'
 import { sanitizeNativeChatRpcBlock } from './native-chat-rpc-block-sanitize'
+import { sshTranscriptResolveOptions } from '../../../native-chat/ssh-transcript-resolve-options'
+import { resolveSshTranscriptRemoteHome } from '../../../native-chat/ssh-transcript-remote-home'
 import {
   MOBILE_NATIVE_CHAT_MAX_WINDOW,
   NativeChatSession,
@@ -63,6 +65,16 @@ function windowForClient(
   return windowed.map((message) => sanitizeMessage(message, clientKind))
 }
 
+/** Transcript lookups for a session on a user SSH host go over that host's relay. */
+function sshRouteOptions(params: { executionHostId?: string; transcriptPath?: string }) {
+  const route = sshTranscriptResolveOptions(
+    params.executionHostId,
+    params.transcriptPath,
+    resolveSshTranscriptRemoteHome
+  )
+  return route.kind === 'ssh' ? route.options : {}
+}
+
 export const NATIVE_CHAT_METHODS = [
   defineMethod({
     name: 'nativeChat.readSession',
@@ -74,6 +86,7 @@ export const NATIVE_CHAT_METHODS = [
           agent: params.agent,
           sessionId: params.sessionId,
           transcriptPath: params.transcriptPath,
+          ...sshRouteOptions(params),
           limit,
           beforeOffset: params.beforeOffset
         },
@@ -135,6 +148,7 @@ export const NATIVE_CHAT_METHODS = [
         agent: params.agent,
         sessionId: params.sessionId,
         transcriptPath: params.transcriptPath,
+        ...sshRouteOptions(params),
         initialLimit: limit,
         onInitialSnapshot: (messages, hasMore, beforeOffset, error, lifecycle) => {
           if (closed) {

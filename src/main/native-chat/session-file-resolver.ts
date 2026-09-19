@@ -91,6 +91,9 @@ export type ResolveSessionFileOptions = {
   transcriptPath?: string
   /** Attested WSL provider-session distro. Restricts exact-path resolution to that guest. */
   wslDistro?: string
+  /** The session lives on another host: an id search may only use the roots
+   *  given here, never this machine's session directories. */
+  remoteOnly?: boolean
 }
 
 /**
@@ -187,6 +190,15 @@ async function resolveSessionFileById(
 ): Promise<string | null> {
   const trimmedId = sessionId.trim()
   if (!trimmedId) {
+    return null
+  }
+  if (
+    options.remoteOnly &&
+    !options.claudeProjectsDir &&
+    !options.codexSessionsDirs &&
+    !options.grokSessionsDir &&
+    !options.ompSessionsDir
+  ) {
     return null
   }
 

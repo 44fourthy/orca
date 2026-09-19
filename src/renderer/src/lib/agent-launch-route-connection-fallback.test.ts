@@ -46,11 +46,11 @@ describe('launch route transcript readability', () => {
     )
   })
 
-  it('keeps a remote repo off native chat through the same fallback', () => {
+  it('routes a remote repo to native chat through the same fallback (relay-read transcript)', () => {
     const store = storeWithAmbiguousWorktreeRows('build-box')
 
     expect(planAgentSessionLaunch(store, { agent: 'grok', workspace: WORKSPACE }).route).toBe(
-      'terminal-tui'
+      'legacy-native-chat'
     )
   })
 

@@ -62,7 +62,7 @@ describe('getNativeChatSessionTransport — selection', () => {
 
     await transport.readSession('claude', 'sess-1', 40, '/t/path')
 
-    expect(nativeChatReadSession).toHaveBeenCalledWith('claude', 'sess-1', 40, '/t/path')
+    expect(nativeChatReadSession).toHaveBeenCalledWith('claude', 'sess-1', 40, '/t/path', undefined)
     expect(runtimeEnvironmentsCall).not.toHaveBeenCalled()
   })
 

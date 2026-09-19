@@ -79,7 +79,7 @@ describe('canToggleNativeChat', () => {
     ).toBe(true)
   })
 
-  it('rejects Model-A SSH Grok when its transcript is remote-only', () => {
+  it('accepts Model-A SSH Grok now that its transcript is read over the relay', () => {
     expect(
       canToggleNativeChat({
         experimentalNativeChatEnabled: true,
@@ -87,12 +87,12 @@ describe('canToggleNativeChat', () => {
         launchAgent: 'grok',
         nativeChatTranscriptIsLocalReadable: isNativeChatTranscriptLocalReadable('ssh-target-1')
       })
-    ).toBe(false)
+    ).toBe(true)
   })
 
-  // Why: omp discloses no hook transcript path either, so its session file is
-  // only reachable when this process can read the agent's disk.
-  it('rejects Model-A SSH omp but accepts it local and runtime-owned', () => {
+  // Why: omp discloses no hook transcript path either; its session file is
+  // found by scanning the agent host's sessions root, which the SSH route can do.
+  it('accepts omp on SSH, local and runtime-owned hosts alike', () => {
     const forConnection = (connectionId: string | null): boolean =>
       canToggleNativeChat({
         experimentalNativeChatEnabled: true,
@@ -100,7 +100,7 @@ describe('canToggleNativeChat', () => {
         launchAgent: 'omp',
         nativeChatTranscriptIsLocalReadable: isNativeChatTranscriptLocalReadable(connectionId)
       })
-    expect(forConnection('ssh-target-1')).toBe(false)
+    expect(forConnection('ssh-target-1')).toBe(true)
     expect(forConnection(null)).toBe(true)
     expect(forConnection('runtime-ssh-env-1')).toBe(true)
   })

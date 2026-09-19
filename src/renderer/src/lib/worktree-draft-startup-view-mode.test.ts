@@ -50,9 +50,9 @@ describe('resolveBackendDraftStartup', () => {
     expect(viewModeFor('omp')).toBe('chat')
   })
 
-  it('keeps a Model-A SSH omp draft in the terminal view', () => {
+  it('opens a Model-A SSH omp draft in chat (transcript read over the relay)', () => {
     setRepoConnection('ssh-target-1')
-    expect(viewModeFor('omp')).toBe('terminal')
+    expect(viewModeFor('omp')).toBe('chat')
   })
 
   it('opens a runtime-owned SSH omp draft in chat, which reads the transcript locally', () => {
@@ -60,10 +60,10 @@ describe('resolveBackendDraftStartup', () => {
     expect(viewModeFor('omp')).toBe('chat')
   })
 
-  it('preserves the same split for Grok', () => {
+  it('opens Grok in chat on local and SSH hosts alike', () => {
     setRepoConnection(null)
     expect(viewModeFor('grok')).toBe('chat')
     setRepoConnection('ssh-target-1')
-    expect(viewModeFor('grok')).toBe('terminal')
+    expect(viewModeFor('grok')).toBe('chat')
   })
 })

@@ -1,3 +1,4 @@
+import { isSshTranscriptPath } from './ssh-transcript-path'
 import { isWslUncPath } from '../../shared/wsl-paths'
 import { filterPathsToRunningWslDistrosAsync } from '../wsl-running-path-filter'
 import {
@@ -22,7 +23,7 @@ export function createRunningGuardedTranscriptNativeWatcher(
   onRetry: () => void
 ): TranscriptNativeWatcher {
   const isWslPath = isWslTranscriptWatcherPath(filePath)
-  if (isWslPath) {
+  if (isWslPath || isSshTranscriptPath(filePath)) {
     return {
       bind: () => false,
       dispose: () => {},

@@ -2,7 +2,9 @@ import { describe, expect, it } from 'vitest'
 import type { TerminalTab } from '../../../../shared/terminal-tab-types'
 import {
   selectNativeChatRuntimeEnvironmentId,
-  type NativeChatRuntimeOwnerState
+  selectNativeChatSshExecutionHostId,
+  type NativeChatRuntimeOwnerState,
+  type NativeChatSshHostState
 } from './native-chat-runtime-owner'
 
 function terminalTab(overrides: Partial<TerminalTab> = {}): TerminalTab {
@@ -73,5 +75,28 @@ describe('selectNativeChatRuntimeEnvironmentId', () => {
         'tab-1'
       )
     ).toBe('env-1')
+  })
+})
+
+describe('selectNativeChatSshExecutionHostId', () => {
+  const sshHostState = (hostId: string): NativeChatSshHostState =>
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the selector reads only tabsByWorktree and each worktree row's hostId; the fixture supplies both and empty repo/group/folder slices.
+    ({
+      ...state({ worktreesByRepo: worktreeRecord(hostId) }),
+      repos: [],
+      projectGroups: [],
+      folderWorkspaces: []
+    }) as unknown as NativeChatSshHostState
+
+  it('names the ssh execution host for a pane on a user SSH target', () => {
+    expect(selectNativeChatSshExecutionHostId(sshHostState('ssh:vps-1'), 'tab-1')).toBe('ssh:vps-1')
+  })
+
+  it('is null for local panes, runtime-owned targets, and unknown tabs', () => {
+    expect(selectNativeChatSshExecutionHostId(sshHostState('local'), 'tab-1')).toBeNull()
+    expect(
+      selectNativeChatSshExecutionHostId(sshHostState('ssh:runtime-ssh-env-1'), 'tab-1')
+    ).toBeNull()
+    expect(selectNativeChatSshExecutionHostId(sshHostState('local'), 'tab-missing')).toBeNull()
   })
 })

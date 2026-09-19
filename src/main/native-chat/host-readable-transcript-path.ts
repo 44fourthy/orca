@@ -8,6 +8,8 @@ import {
   filterPathsToWslDistros
 } from '../wsl-running-path-filter'
 import { wslGatedAccess } from './wsl-transcript-fs-access'
+import { isSshTranscriptPath } from './ssh-transcript-path'
+import { sshTranscriptAccess } from './ssh-transcript-fs'
 import { WslTranscriptFsError, wslTranscriptFsRefusal } from './wsl-transcript-fs-gate'
 
 /**
@@ -84,6 +86,9 @@ export type HostReadableTranscriptPathDeps = {
 // instead of falling through to the next candidate, so keep this off the loop.
 async function pathExistsAsync(path: string, signal?: AbortSignal): Promise<boolean> {
   signal?.throwIfAborted()
+  if (isSshTranscriptPath(path)) {
+    return sshTranscriptAccess(path)
+  }
   if (!isWslUncPath(path)) {
     return existsSync(path)
   }

@@ -3,6 +3,8 @@ import {
   type WorktreeRuntimeOwnerState
 } from '@/lib/worktree-runtime-owner'
 import type { AppState } from '@/store/types'
+import { getConnectionIdFromState } from '@/lib/connection-context'
+import { isRuntimeOwnedSshTargetId, toSshExecutionHostId } from '../../../../shared/execution-host'
 import { findTerminalTabWorktreeId } from './native-chat-file-link'
 
 export type NativeChatRuntimeOwnerState = Pick<AppState, 'tabsByWorktree'> &
@@ -27,4 +29,26 @@ export function selectNativeChatRuntimeEnvironmentId(
 ): string | null {
   const worktreeId = findTerminalTabWorktreeId(state.tabsByWorktree, terminalTabId)
   return worktreeId ? getRuntimeEnvironmentIdForWorktree(state, worktreeId) : null
+}
+
+export type NativeChatSshHostState = Pick<AppState, 'tabsByWorktree'> &
+  Parameters<typeof getConnectionIdFromState>[0]
+
+/**
+ * The `ssh:` execution host for a Native Chat pane on a user SSH target, or null
+ * for local panes and runtime-owned (ephemeral VM) targets. The local IPC path
+ * hands it to main so the transcript is read over that host's relay.
+ */
+export function selectNativeChatSshExecutionHostId(
+  state: NativeChatSshHostState,
+  terminalTabId: string
+): string | null {
+  const worktreeId = findTerminalTabWorktreeId(state.tabsByWorktree, terminalTabId)
+  if (!worktreeId) {
+    return null
+  }
+  const connectionId = getConnectionIdFromState(state, worktreeId)
+  return connectionId && !isRuntimeOwnedSshTargetId(connectionId)
+    ? toSshExecutionHostId(connectionId)
+    : null
 }
