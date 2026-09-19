@@ -1,19 +1,27 @@
 import { isAgentSessionHandleProvider } from '../../../src/shared/agent-session-provider-handle'
 import type { AgentStatusEntry } from '../../../src/shared/agent-status-types'
-import { isRuntimeOwnedSshTargetId } from '../../../src/shared/execution-host'
+import { isRuntimeOwnedSshTargetId, toSshExecutionHostId } from '../../../src/shared/execution-host'
 import {
   isNativeChatSupportedAgent,
   nativeChatRequiresLocalTranscript
 } from '../../../src/shared/native-chat-agent-support'
 
-// Why: native chat renders an agent's own JSONL transcript, and the host
-// resolver knows these transcript layouts. Agents whose hook reports no
-// transcript path (Grok, omp) are additionally gated on host readability,
-// because Model-A SSH stores their transcript on the remote target.
+// Why: the paired host reads a local transcript directly and a user SSH
+// target's transcript over that host's relay, so only an unresolved
+// connection (`undefined`) is unreadable.
 export function isMobileNativeChatTranscriptReadable(
   connectionId: string | null | undefined
 ): boolean {
-  return connectionId === null || isRuntimeOwnedSshTargetId(connectionId)
+  return connectionId !== undefined
+}
+
+/** The `ssh:` execution host the paired host should read from, or null for local/runtime-owned. */
+export function mobileNativeChatExecutionHostId(
+  connectionId: string | null | undefined
+): string | null {
+  return connectionId && !isRuntimeOwnedSshTargetId(connectionId)
+    ? toSshExecutionHostId(connectionId)
+    : null
 }
 
 export type MobileNativeChatResolution = {

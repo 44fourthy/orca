@@ -11,6 +11,8 @@ import { OMP_SESSION_ARTIFACT_DIR_PATTERN } from '../ai-vault/session-scanner-om
 import { normalizeAgentSessionsDir } from '../ai-vault/session-scanner-values'
 import { resolveOrcaManagedCodexHomePath } from '../codex/codex-home-paths'
 import {
+  GROK_CHAT_HISTORY_FILE,
+  GROK_SESSION_GROUP_SCAN_MAX_ENTRIES,
   findGrokChatHistoryBySessionId,
   resolveGrokSessionsDir
 } from '../../shared/grok-session-paths'
@@ -20,7 +22,10 @@ import {
   wslCodexSessionsDirs
 } from './host-readable-transcript-path'
 import { findWslCodexSessionPath } from './wsl-codex-session-path-scan'
-import { wslTranscriptFsRefusal, type WslTranscriptFsError } from './wsl-transcript-fs-gate'
+import { wslTranscriptFsRefusal } from './wsl-transcript-fs-gate'
+import { WslTranscriptFsError } from './wsl-transcript-fs-error'
+import { isSshTranscriptPath, joinSshTranscriptPath } from './ssh-transcript-path'
+import { wslGatedLstat, wslGatedReaddir } from './wsl-transcript-fs-access'
 import { proveClaudeTranscriptBranch } from '../claude/claude-transcript-branch-proof'
 
 // Why: these mirror the path constants in ai-vault/session-scanner.ts. Reads
@@ -94,6 +99,8 @@ export type ResolveSessionFileOptions = {
   /** The session lives on another host: an id search may only use the roots
    *  given here, never this machine's session directories. */
   remoteOnly?: boolean
+  /** Where the agent runs, for sources that read a host database instead of a file. */
+  executionHostId?: string
 }
 
 /**
@@ -228,6 +235,10 @@ async function resolveSessionFileById(
   if (transcriptAgent === 'omp') {
     return resolveOmpSessionFile(trimmedId, options.ompSessionsDir ?? ompSessionsDir(), signal)
   }
+  // OpenCode keeps sessions in SQLite; opencode-native-chat-session.ts reads them.
+  if (transcriptAgent === 'opencode') {
+    return null
+  }
   // Why: a new transcript agent must pick its own resolver. Falling through to
   // OMP's scan would search the wrong root with a foreign session id, so fail
   // the build here instead of resolving silently wrong at runtime.
@@ -331,9 +342,47 @@ async function resolveGrokSessionFile(
   // Why: Native Chat runs on the main thread; use the bounded async direct-layout
   // lookup instead of blocking, then repeating, a recursive full-tree scan.
   signal?.throwIfAborted()
+  if (isSshTranscriptPath(sessionsDir)) {
+    return resolveSshGrokSessionFile(sessionId, sessionsDir, signal)
+  }
   const history = await findGrokChatHistoryBySessionId(sessionsDir, sessionId)
   signal?.throwIfAborted()
   return history
+}
+
+// Why a separate walk: the shared Grok lookup opens directories with node:fs,
+// which would probe THIS disk for a remote root. Same layout
+// (`<root>/<cwd group>/<session id>/chat_history.jsonl`), same bound, but every
+// step goes through the gated layer so the relay answers and a refusal propagates.
+async function resolveSshGrokSessionFile(
+  sessionId: string,
+  sessionsDir: string,
+  signal?: AbortSignal
+): Promise<string | null> {
+  const groups = (await wslGatedReaddir(sessionsDir, 'scan', signal))
+    .filter((entry) => entry.isDirectory())
+    .slice(0, GROK_SESSION_GROUP_SCAN_MAX_ENTRIES)
+  for (const group of groups) {
+    signal?.throwIfAborted()
+    const candidate = joinSshTranscriptPath(
+      sessionsDir,
+      group.name,
+      sessionId,
+      GROK_CHAT_HISTORY_FILE
+    )
+    try {
+      const stats = await wslGatedLstat(candidate, 'scan', signal)
+      if (stats.isFile() && !stats.isSymbolicLink()) {
+        return candidate
+      }
+    } catch (error) {
+      if (error instanceof WslTranscriptFsError) {
+        throw error
+      }
+      // A missing candidate is the normal miss; keep scanning the other groups.
+    }
+  }
+  return null
 }
 
 // omp keeps one directory per working directory (`-Documents-dog-app`) with the

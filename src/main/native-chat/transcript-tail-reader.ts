@@ -28,6 +28,8 @@ import {
   wslGatedStat
 } from './wsl-transcript-fs-access'
 import { wslTranscriptFsRefusal } from './wsl-transcript-fs-gate'
+import { readOpenCodeNativeChatSession } from './opencode/opencode-native-chat-session'
+import { applySshTranscriptRoute } from './ssh-transcript-resolve-options'
 
 export const MAX_NATIVE_CHAT_TRANSCRIPT_RECORD_BYTES = 2 * 1024 * 1024
 
@@ -212,7 +214,7 @@ export async function readNativeChatTranscriptTailFile(
 }
 
 export async function readNativeChatTranscriptTail(
-  args: ResolveSessionFileOptions & {
+  rawArgs: ResolveSessionFileOptions & {
     agent: AgentType
     sessionId: string
     transcriptPath?: string
@@ -230,6 +232,17 @@ export async function readNativeChatTranscriptTail(
     }
   | { error: string; notFound?: true }
 > {
+  if (resolveNativeChatTranscriptAgent(rawArgs.agent) === 'opencode') {
+    return readOpenCodeNativeChatSession(
+      {
+        sessionId: rawArgs.sessionId,
+        limit: rawArgs.limit,
+        executionHostId: rawArgs.executionHostId
+      },
+      signal
+    )
+  }
+  const args = applySshTranscriptRoute(rawArgs)
   const decode = nativeChatLineDecoderForAgent(args.agent)
   const decodeLifecycle = nativeChatTurnLifecycleDecoderForAgent(args.agent)
   if (!decode) {

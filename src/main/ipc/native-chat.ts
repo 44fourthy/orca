@@ -5,8 +5,6 @@ import type {
   NativeChatTurnLifecycle
 } from '../../shared/native-chat-types'
 import { clearNativeChatTranscriptCache } from '../native-chat/transcript-read-cache'
-import { sshTranscriptResolveOptions } from '../native-chat/ssh-transcript-resolve-options'
-import { resolveSshTranscriptRemoteHome } from '../native-chat/ssh-transcript-remote-home'
 import type { ReadTranscriptResult } from '../native-chat/transcript-reader'
 import {
   subscribeNativeChatTranscript,
@@ -40,16 +38,11 @@ async function readSession(args: NativeChatReadSessionArgs): Promise<ReadTranscr
   const { agent, sessionId } = args
   // Clamp to a positive window; default to the desktop window for the first page.
   const limit = args.limit && args.limit > 0 ? Math.floor(args.limit) : DESKTOP_READ_WINDOW
-  const route = sshTranscriptResolveOptions(
-    args.executionHostId,
-    args.transcriptPath,
-    resolveSshTranscriptRemoteHome
-  )
   return readNativeChatTranscriptTail({
     agent,
     sessionId,
     transcriptPath: args.transcriptPath,
-    ...(route.kind === 'ssh' ? route.options : {}),
+    executionHostId: args.executionHostId,
     limit
   })
 }
@@ -187,13 +180,6 @@ async function handleSubscribe(event: IpcMainEvent, args: NativeChatSubscribeArg
   }
   const { subscriptionId, agent, sessionId, transcriptPath } = args
   const limit = args.limit && args.limit > 0 ? Math.floor(args.limit) : DESKTOP_READ_WINDOW
-  // An SSH session is tailed over its relay; while the host is unreachable the
-  // route surfaces a retryable refusal and keeps polling — never this disk.
-  const route = sshTranscriptResolveOptions(
-    args.executionHostId,
-    transcriptPath,
-    resolveSshTranscriptRemoteHome
-  )
   // Replace any prior subscription under the same id (session change/resubscribe).
   const pending = beginPendingSubscription(sender.id, subscriptionId)
   registerSenderCleanup(sender)
@@ -202,7 +188,9 @@ async function handleSubscribe(event: IpcMainEvent, args: NativeChatSubscribeArg
     agent,
     sessionId,
     transcriptPath,
-    ...(route.kind === 'ssh' ? route.options : {}),
+    // An SSH session is tailed over its relay (route derived per attempt); while
+    // the host is unreachable the reader surfaces a retryable refusal, never this disk.
+    executionHostId: args.executionHostId,
     initialLimit: limit,
     onTranscriptPending: () => {
       if (sender.isDestroyed()) {

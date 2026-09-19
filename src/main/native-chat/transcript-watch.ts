@@ -14,6 +14,9 @@ import type {
 import { nativeChatLineDecoderForAgent } from './transcript-tail-reader'
 import { WslTranscriptFsError, wslTranscriptFsRefusal } from './wsl-transcript-fs-gate'
 import { observeRunningWslDistros } from './wsl-transcript-running-observer'
+import { resolveNativeChatTranscriptAgent } from '../../shared/native-chat-agent-support'
+import { subscribeOpenCodeNativeChatSession } from './opencode/opencode-native-chat-session'
+import { applySshTranscriptRoute } from './ssh-transcript-resolve-options'
 
 export { readNativeChatTranscriptTail } from './transcript-tail-reader'
 export { getActiveNativeChatWatcherCount } from './transcript-watcher-count'
@@ -73,16 +76,18 @@ function exactTranscriptPath(args: SubscribeNativeChatTranscriptArgs): string | 
  * view can stop spinning while it waits.
  */
 function subscribeViaResolvePoll(
-  args: SubscribeNativeChatTranscriptArgs,
+  rawArgs: SubscribeNativeChatTranscriptArgs,
   decode: (line: string, fallbackId: string) => NativeChatMessage | null
 ): NativeChatTranscriptSubscription {
   let closed = false
   let installed: NativeChatTranscriptSubscription | null = null
   let pollTimer: ReturnType<typeof setTimeout> | null = null
+  // Why re-routed per attempt: an SSH host's `$HOME` may land after subscribe.
+  let args = applySshTranscriptRoute(rawArgs)
   let delay = args.resolvePollIntervalMs ?? INITIAL_RESOLVE_POLL_MS
   let lastFallbackResolveAt = Date.now()
-  const exactPath = exactTranscriptPath(args)
-  const exactPathNeedsWslResolution = exactPath !== null && needsWslHostResolution(exactPath)
+  let exactPath = exactTranscriptPath(args)
+  let exactPathNeedsWslResolution = exactPath !== null && needsWslHostResolution(exactPath)
   // Why: WSL hooks report guest Linux paths the Windows host cannot open; the
   // UNC twin is resolved lazily (the distro may still be cold) and memoized so
   // the exact-path install doesn't wait on the slower id-glob (#10326).
@@ -148,6 +153,13 @@ function subscribeViaResolvePoll(
   async function runAttempt(wslSnapshot?: WslTranscriptResolutionSnapshot): Promise<void> {
     if (closed || installed) {
       return
+    }
+    args = applySshTranscriptRoute(rawArgs)
+    const nextExactPath = exactTranscriptPath(args)
+    if (nextExactPath !== exactPath) {
+      exactPath = nextExactPath
+      exactPathNeedsWslResolution = exactPath !== null && needsWslHostResolution(exactPath)
+      hostReadableExactPath = null
     }
     let result: NativeChatTranscriptSubscription | null
     const now = Date.now()
@@ -264,6 +276,9 @@ export async function subscribeNativeChatTranscript(
   setupSignal?: AbortSignal
 ): Promise<NativeChatTranscriptSubscription> {
   setupSignal?.throwIfAborted()
+  if (resolveNativeChatTranscriptAgent(args.agent) === 'opencode') {
+    return subscribeOpenCodeNativeChatSession(args, setupSignal)
+  }
   const decode = nativeChatLineDecoderForAgent(args.agent)
   if (!decode) {
     // Nothing watchable — return a no-op teardown so callers can unconditionally
@@ -278,7 +293,7 @@ export async function subscribeNativeChatTranscript(
 
   let installed: NativeChatTranscriptSubscription | null
   try {
-    installed = await attemptInstall(args, decode, setupSignal)
+    installed = await attemptInstall(applySshTranscriptRoute(args), decode, setupSignal)
   } catch (error) {
     setupSignal?.throwIfAborted()
     // Why: a gate-refused resolve (stalled WSL distro) must degrade to the

@@ -10,13 +10,14 @@ import { getClientForEnvironment, requireActiveEnvironmentOrNull } from './web-r
 
 export function createWebNativeChatApi(): NativeChatApi {
   return {
-    readSession: async (agent, sessionId, limit, transcriptPath) =>
+    readSession: async (agent, sessionId, limit, transcriptPath, executionHostId) =>
       parseRuntimeNativeChatReadSessionResult(
         await callRuntimeResult<unknown>('nativeChat.readSession', {
           agent,
           sessionId,
           limit,
-          transcriptPath
+          transcriptPath,
+          executionHostId
         })
       ),
     subscribe: (args, onFrame) => {
@@ -45,6 +46,7 @@ export function createWebNativeChatApi(): NativeChatApi {
             sessionId: args.sessionId,
             subscriptionId: args.subscriptionId,
             transcriptPath: args.transcriptPath,
+            executionHostId: args.executionHostId,
             limit: args.limit,
             capabilities: { transcriptPending: 1 }
           },

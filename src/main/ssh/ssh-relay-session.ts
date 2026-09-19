@@ -21,6 +21,11 @@ import { isSshPtyIdentityMismatchError, isSshPtyNotFoundError } from '../provide
 import { toAppSshPtyId, toRelaySshPtyId } from '../providers/ssh-pty-id'
 import { SshFilesystemProvider } from '../providers/ssh-filesystem-provider'
 import { isMethodNotFoundError } from './ssh-filesystem-stream-reader'
+import {
+  OPENCODE_SESSION_WINDOW_METHOD,
+  parseOpenCodeSessionWindow,
+  type OpenCodeSessionWindow
+} from '../../shared/opencode-session-window'
 import { SshGitProvider } from '../providers/ssh-git-provider'
 import { agentHookServer } from '../agent-hooks/server'
 import { isAgentStatusHooksEnabled } from '../agent-hooks/managed-agent-hook-controls'
@@ -461,6 +466,44 @@ export class SshRelaySession {
       throw new Error('SSH relay is not ready')
     }
     return mux.request(method, params, { timeoutMs: 15_000 })
+  }
+
+  /**
+   * One OpenCode session's newest messages, read from the host's SQLite by the
+   * relay. Null when the host does not know the session; throws when the host
+   * cannot answer (relay not ready, too old for the method, or its Node has no
+   * `node:sqlite`).
+   */
+  async requestOpenCodeSessionWindow(
+    params: { sessionId: string; limit: number; tokenOnly?: boolean },
+    options: { signal?: AbortSignal; timeoutMs?: number } = {}
+  ): Promise<OpenCodeSessionWindow | null> {
+    const mux = this.mux
+    if (!mux || mux.isDisposed() || this._state !== 'ready') {
+      throw new Error('SSH relay is not ready')
+    }
+    let result: unknown
+    try {
+      result = await mux.request(OPENCODE_SESSION_WINDOW_METHOD, params, {
+        signal: options.signal,
+        timeoutMs: options.timeoutMs ?? 15_000
+      })
+    } catch (error) {
+      if (isMethodNotFoundError(error)) {
+        throw new Error(
+          'Reconnect this SSH host to update its Orca relay before reading OpenCode chats.'
+        )
+      }
+      throw error
+    }
+    if (result === null || result === undefined) {
+      return null
+    }
+    const window = parseOpenCodeSessionWindow(result)
+    if (!window) {
+      throw new Error('The SSH relay returned a malformed OpenCode session window.')
+    }
+    return window
   }
 
   async requestAiVaultSessionList(

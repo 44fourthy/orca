@@ -24,6 +24,7 @@ describe('sshTranscriptResolveOptions', () => {
       options: {
         transcriptPath: toSshTranscriptPath('vps-1', '/home/u/.claude/projects/-p/s.jsonl'),
         remoteOnly: true,
+        executionHostId: 'ssh:vps-1',
         claudeProjectsDir: toSshTranscriptPath('vps-1', '/home/u/.claude/projects'),
         codexSessionsDirs: [toSshTranscriptPath('vps-1', '/home/u/.codex/sessions')],
         grokSessionsDir: toSshTranscriptPath('vps-1', '/home/u/.grok/sessions'),
@@ -50,7 +51,8 @@ describe('sshTranscriptResolveOptions', () => {
       kind: 'ssh',
       options: {
         transcriptPath: toSshTranscriptPath('vps-1', '/home/u/s.jsonl'),
-        remoteOnly: true
+        remoteOnly: true,
+        executionHostId: 'ssh:vps-1'
       }
     })
   })

@@ -61,14 +61,18 @@ export function useMobileNativeChatSession(args: {
   agent: string | null
   sessionId: string | null
   transcriptPath: string | null
+  /** `ssh:` host the paired host reads from; forwarded so it never reads its own disk for a remote session. */
+  executionHostId?: string | null
 }): MobileNativeChatSession {
   const { client, sourceIdentity, agent, sessionId, transcriptPath } = args
+  const executionHostId = args.executionHostId ?? null
   const [messages, setMessages] = useState<NativeChatMessage[]>([])
   const identity = encodeNativeChatTranscriptIdentity([
     sourceIdentity,
     agent,
     sessionId,
-    transcriptPath
+    transcriptPath,
+    executionHostId
   ])
   // Pre-read status is a pure function of the props, so derive it rather than
   // letting the effect write it a commit later.
@@ -156,7 +160,8 @@ export function useMobileNativeChatSession(args: {
         limit: limitRef.current,
         subscriptionId: buildNativeChatSubscriptionId(agent, sessionId),
         capabilities: { transcriptPending: 1 },
-        ...(transcriptPath ? { transcriptPath } : {})
+        ...(transcriptPath ? { transcriptPath } : {}),
+        ...(executionHostId ? { executionHostId } : {})
       },
       (raw) => {
         if (cancelled) {
@@ -219,7 +224,7 @@ export function useMobileNativeChatSession(args: {
       cancelled = true
       unsubscribe()
     }
-  }, [client, agent, sessionId, transcriptPath, identity, setList])
+  }, [client, agent, sessionId, transcriptPath, executionHostId, identity, setList])
 
   const loadEarlier = useCallback(() => {
     if (!client || !agent || !sessionId || loadingEarlierRef.current || !hasMore) {
@@ -245,7 +250,8 @@ export function useMobileNativeChatSession(args: {
           sessionId,
           limit: beforeOffset === null ? nextLimit : pageLimit,
           ...(beforeOffset === null ? {} : { beforeOffset }),
-          ...(transcriptPath ? { transcriptPath } : {})
+          ...(transcriptPath ? { transcriptPath } : {}),
+          ...(executionHostId ? { executionHostId } : {})
         })
         const accepted = nativeChatSessionPageRead.interpret(response)
         if (!accepted.accepted) {
@@ -286,7 +292,7 @@ export function useMobileNativeChatSession(args: {
         }
       }
     })()
-  }, [client, agent, sessionId, transcriptPath, hasMore, setList])
+  }, [client, agent, sessionId, transcriptPath, executionHostId, hasMore, setList])
 
   // Held for any unsettled read, not just an in-flight one: a stream error or a
   // dropped client would otherwise trade the conversation for an error card.

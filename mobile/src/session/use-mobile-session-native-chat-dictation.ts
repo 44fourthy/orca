@@ -11,7 +11,7 @@ import {
   isDictationSetupRequiredError
 } from '../dictation/mobile-dictation-setup'
 import { useMobileNativeChatController } from './use-mobile-native-chat-controller'
-import { useMobileNativeChatReadability } from './use-mobile-native-chat-readability'
+import { useMobileNativeChatHost } from './use-mobile-native-chat-readability'
 import { useMobileNativeChatInputLease } from './use-mobile-native-chat-input-lease'
 import { useMobileNativeChatSendError } from './use-mobile-native-chat-send-error'
 import { mobileNativeChatScopeKey } from './mobile-native-chat-scope-key'
@@ -51,7 +51,10 @@ export function useMobileSessionNativeChatDictation(
     scopeKey: nativeChatScopeKey,
     showToast
   })
-  const nativeChatTranscriptIsLocalReadable = useMobileNativeChatReadability(client, worktreeId)
+  const {
+    readable: nativeChatTranscriptIsLocalReadable,
+    executionHostId: nativeChatExecutionHostId
+  } = useMobileNativeChatHost(client, worktreeId)
   const {
     ready: nativeChatInputLeaseReady,
     readyRef: nativeChatInputLeaseReadyRef,
@@ -71,6 +74,7 @@ export function useMobileSessionNativeChatDictation(
     activeHandleRef,
     deviceTokenRef,
     nativeChatTranscriptIsLocalReadable,
+    nativeChatExecutionHostId,
     nativeChatInputLeaseReady,
     connState,
     agentSessionPromptCancelSupported,

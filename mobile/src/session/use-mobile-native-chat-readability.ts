@@ -5,20 +5,37 @@ import {
   type MobileRuntimeRepoSummary
 } from './mobile-session-read-operations'
 import { isFloatingWorkspaceWorktreeId } from './floating-workspace'
-import { isMobileNativeChatTranscriptReadable } from './mobile-native-chat-eligibility'
+import {
+  isMobileNativeChatTranscriptReadable,
+  mobileNativeChatExecutionHostId
+} from './mobile-native-chat-eligibility'
 import { getRepoIdFromMobileWorktreeId } from './mobile-session-route-helpers'
 
-type ReadabilityState = { client: RpcClient | null; worktreeId: string; readable: boolean }
+type ReadabilityState = {
+  client: RpcClient | null
+  worktreeId: string
+  readable: boolean
+  executionHostId: string | null
+}
 
 export function useMobileNativeChatReadability(
   client: RpcClient | null,
   worktreeId: string
 ): boolean {
+  return useMobileNativeChatHost(client, worktreeId).readable
+}
+
+/** Readability plus the `ssh:` host the paired host must read from, from one repo lookup. */
+export function useMobileNativeChatHost(
+  client: RpcClient | null,
+  worktreeId: string
+): { readable: boolean; executionHostId: string | null } {
   const isFloatingWorkspace = isFloatingWorkspaceWorktreeId(worktreeId)
   const [state, setState] = useState<ReadabilityState>({
     client: null,
     worktreeId: '',
-    readable: false
+    readable: false,
+    executionHostId: null
   })
   useEffect(() => {
     // Why: the floating workspace always runs on the paired host and has no repo connection to resolve.
@@ -27,7 +44,7 @@ export function useMobileNativeChatReadability(
     }
     let active = true
     if (!client) {
-      setState({ client, worktreeId, readable: false })
+      setState({ client, worktreeId, readable: false, executionHostId: null })
       return
     }
     void nativeChatRepoListRead
@@ -46,12 +63,13 @@ export function useMobileNativeChatReadability(
         setState({
           client,
           worktreeId,
-          readable: repo ? isMobileNativeChatTranscriptReadable(repo.connectionId ?? null) : false
+          readable: repo ? isMobileNativeChatTranscriptReadable(repo.connectionId ?? null) : false,
+          executionHostId: repo ? mobileNativeChatExecutionHostId(repo.connectionId ?? null) : null
         })
       })
       .catch(() => {
         if (active) {
-          setState({ client, worktreeId, readable: false })
+          setState({ client, worktreeId, readable: false, executionHostId: null })
         }
       })
     return () => {
@@ -59,9 +77,11 @@ export function useMobileNativeChatReadability(
     }
   }, [client, isFloatingWorkspace, worktreeId])
   if (isFloatingWorkspace) {
-    return true
+    return { readable: true, executionHostId: null }
   }
   // Why: route reuse renders before its new effect resolves; never expose the
   // previous repo's readability under a different client/worktree key.
-  return state.client === client && state.worktreeId === worktreeId ? state.readable : false
+  return state.client === client && state.worktreeId === worktreeId
+    ? { readable: state.readable, executionHostId: state.executionHostId }
+    : { readable: false, executionHostId: null }
 }

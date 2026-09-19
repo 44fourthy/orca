@@ -4,6 +4,7 @@ import { SessionNewestFiles } from './session-newest-files'
 import type { SessionSidecarObservation } from './session-sidecar-stat'
 import type { AiVaultAgent, AiVaultScanIssue } from '../../shared/ai-vault-types'
 import { wslGatedReaddir, wslGatedStat } from '../native-chat/wsl-transcript-fs-access'
+import { isSshTranscriptPath, joinSshTranscriptPath } from '../native-chat/ssh-transcript-path'
 import { WslTranscriptFsError } from '../native-chat/wsl-transcript-fs-gate'
 import { recordSessionScanIssue } from './session-scan-issues'
 import type { SessionFileDiscovery } from './session-scanner-types'
@@ -165,7 +166,10 @@ export async function forEachSessionFile(
 
   for (const entry of entries) {
     options.signal?.throwIfAborted()
-    const fullPath = join(dirPath, entry.name)
+    // Why: an SSH transcript root must keep its spelling; the platform join would strip it on Windows.
+    const fullPath = isSshTranscriptPath(dirPath)
+      ? joinSshTranscriptPath(dirPath, entry.name)
+      : join(dirPath, entry.name)
     if (entry.isDirectory()) {
       // Skip whole subtrees an agent never wants (e.g. subagent transcripts),
       // avoiding the readdir cost of descending into them.

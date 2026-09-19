@@ -1,4 +1,5 @@
 import { setSshTranscriptRemoteHomeResolver } from '../native-chat/ssh-transcript-remote-home'
+import { setOpenCodeRemoteSessionWindowReader } from '../native-chat/opencode/opencode-remote-session-window'
 import type { SshRelaySession } from '../ssh/ssh-relay-session'
 import { setSshActiveMultiplexerResolver } from '../ssh/ssh-target-registry'
 import { setWorktreeRemovalSshHostHomeResolver } from '../worktree-removal-execution-host-route'
@@ -24,3 +25,10 @@ export function getActiveSshHostHomeDirectory(targetId: string): string | null {
 
 setWorktreeRemovalSshHostHomeResolver(getActiveSshHostHomeDirectory)
 setSshTranscriptRemoteHomeResolver(getActiveSshHostHomeDirectory)
+setOpenCodeRemoteSessionWindowReader((targetId, request, signal) => {
+  const session = activeSessions.get(targetId)
+  if (!session) {
+    return Promise.reject(new Error('The SSH host is not connected.'))
+  }
+  return session.requestOpenCodeSessionWindow(request, { signal })
+})

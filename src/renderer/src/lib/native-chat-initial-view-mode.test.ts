@@ -47,18 +47,25 @@ describe('decideInitialAgentTabViewMode', () => {
     ).toBeUndefined()
   })
 
-  it.each(['gemini', 'opencode'] as const)(
-    'keeps unsupported agent %s in terminal view',
-    (agent) => {
-      expect(
-        decideInitialAgentTabViewMode({
-          experimentalNativeChat: true,
-          openAgentTabsInChatByDefault: true,
-          agent
-        })
-      ).toBeUndefined()
-    }
-  )
+  it('keeps unsupported agent gemini in terminal view', () => {
+    expect(
+      decideInitialAgentTabViewMode({
+        experimentalNativeChat: true,
+        openAgentTabsInChatByDefault: true,
+        agent: 'gemini'
+      })
+    ).toBeUndefined()
+  })
+
+  it('opens OpenCode in chat view now that its sessions decode', () => {
+    expect(
+      decideInitialAgentTabViewMode({
+        experimentalNativeChat: true,
+        openAgentTabsInChatByDefault: true,
+        agent: 'opencode'
+      })
+    ).toBe('chat')
+  })
 
   it.each([
     ['local', null],

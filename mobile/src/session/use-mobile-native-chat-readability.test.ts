@@ -50,9 +50,9 @@ describe('useMobileNativeChatReadability', () => {
     expect(readable).toBe(true)
   })
 
-  it('fails closed for Model-A SSH transcript hosts', async () => {
+  it('admits Model-A SSH transcript hosts (read over the serving host relay)', async () => {
     await mount('model-a-ssh')
-    expect(readable).toBe(false)
+    expect(readable).toBe(true)
   })
 
   it('treats the host-local floating workspace as readable without listing repos', async () => {
@@ -92,6 +92,6 @@ describe('useMobileNativeChatReadability', () => {
       })
       await Promise.resolve()
     })
-    expect(readable).toBe(false)
+    expect(readable).toBe(true)
   })
 })

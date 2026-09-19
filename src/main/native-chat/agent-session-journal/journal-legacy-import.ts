@@ -114,7 +114,8 @@ export async function prepareLegacyTranscriptImport(input: {
   const options = input.options ?? {}
   const limits = options.limits ?? DEFAULT_JOURNAL_PAYLOAD_LIMITS
   const transcriptAgent = resolveNativeChatTranscriptAgent(input.agent)
-  if (!transcriptAgent) {
+  // OpenCode has no line transcript to import; its chat is read live from the session database.
+  if (!transcriptAgent || transcriptAgent === 'opencode') {
     return { ok: false, error: `Unsupported agent for journal import: ${input.agent}` }
   }
   const filePath =

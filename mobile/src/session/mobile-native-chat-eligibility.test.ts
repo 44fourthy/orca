@@ -84,7 +84,7 @@ describe('resolveMobileNativeChat', () => {
     expect(resolveMobileNativeChat({ type: 'terminal', launchAgent: 'gemini' })).toBeNull()
   })
 
-  it('admits Grok only when its transcript is readable by the serving host', () => {
+  it('admits Grok on every resolved host (the serving host reads SSH transcripts over its relay)', () => {
     const tab = { type: 'terminal', launchAgent: 'grok' }
     expect(resolveMobileNativeChat(tab, isMobileNativeChatTranscriptReadable(null))).toMatchObject({
       agent: 'grok'
@@ -94,12 +94,13 @@ describe('resolveMobileNativeChat', () => {
     ).toMatchObject({ agent: 'grok' })
     expect(
       resolveMobileNativeChat(tab, isMobileNativeChatTranscriptReadable('model-a-ssh'))
-    ).toBeNull()
+    ).toMatchObject({ agent: 'grok' })
+    expect(resolveMobileNativeChat(tab, isMobileNativeChatTranscriptReadable(undefined))).toBeNull()
   })
 
-  // Why: omp's hook reports no transcript path either, so mobile can only show
-  // its chat when the serving host is the one holding the session file.
-  it('admits omp only when its transcript is readable by the serving host', () => {
+  // Why: omp's hook reports no transcript path either; the serving host finds
+  // the session file by scanning, locally or over an SSH target's relay.
+  it('admits omp on every resolved host as well', () => {
     const tab = { type: 'terminal', launchAgent: 'omp' }
     expect(resolveMobileNativeChat(tab, isMobileNativeChatTranscriptReadable(null))).toMatchObject({
       agent: 'omp'
@@ -109,9 +110,9 @@ describe('resolveMobileNativeChat', () => {
     ).toMatchObject({ agent: 'omp' })
     expect(
       resolveMobileNativeChat(tab, isMobileNativeChatTranscriptReadable('model-a-ssh'))
-    ).toBeNull()
+    ).toMatchObject({ agent: 'omp' })
     expect(canShowMobileNativeChat(tab, isMobileNativeChatTranscriptReadable('model-a-ssh'))).toBe(
-      false
+      true
     )
   })
 

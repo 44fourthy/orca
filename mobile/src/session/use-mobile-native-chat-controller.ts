@@ -32,6 +32,8 @@ export function useMobileNativeChatController(args: {
   activeHandleRef: MutableRefObject<string | null>
   deviceTokenRef: MutableRefObject<string | null>
   nativeChatTranscriptIsLocalReadable: boolean
+  /** The `ssh:` host the paired host reads the transcript from, or null. */
+  nativeChatExecutionHostId?: string | null
   nativeChatInputLeaseReady: boolean
   /** Live socket state; the lease collapses on disconnect but one render later. */
   connState: ConnectionState
@@ -51,6 +53,7 @@ export function useMobileNativeChatController(args: {
     activeHandleRef,
     deviceTokenRef,
     nativeChatTranscriptIsLocalReadable,
+    nativeChatExecutionHostId,
     nativeChatInputLeaseReady,
     connState,
     agentSessionPromptCancelSupported = null,
@@ -88,6 +91,7 @@ export function useMobileNativeChatController(args: {
       agent: activeChatAgent,
       resolvedAgent: activeChatResolution?.agent ?? null,
       transcriptPath: activeChatResolution?.transcriptPath ?? null,
+      executionHostId: nativeChatExecutionHostId ?? null,
       sessionId: activeChatSessionId,
       sourceIdentity,
       callerIdentity: deviceTokenRef.current ?? '',

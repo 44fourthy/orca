@@ -62,8 +62,8 @@ const HOST_COMPONENT_NAMES = new Set([
   'View'
 ])
 
-const HEAD_MAIN_HOOK_SHA256 = '1b436d21f48e4d7b316178ba9eb7d8f0d3801ffd4e42b6b8987adb1cfcbac570'
-const HEAD_HOOK_BINDING_SHA256 = '5b324d661574950c24c47ad9675afc40f34bf3d6dc0ea7b81a469cf708803dc8'
+const HEAD_MAIN_HOOK_SHA256 = 'c7678aadca6b3c961cce7a74673db371257b7146a4f7de4418aa7f507478ea81'
+const HEAD_HOOK_BINDING_SHA256 = '18c23f1534bec22125fa3928d0226616a5652f2379364a9dcc7d5b5c507859e6'
 const HEAD_CALLBACK_IDENTITY_SHA256 =
   '2a9e4825df007f6ef53b81aa5004991d6318eee7507b44d625c07e630be432eb'
 // Pins that no callback body in the route changed unnoticed. Body text, not behaviour: the sends

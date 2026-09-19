@@ -5,9 +5,17 @@ import {
   type FileStat,
   type IFilesystemProvider
 } from '../providers/filesystem-provider-contract'
-import { getSshFilesystemProvider } from '../providers/ssh-filesystem-dispatch'
+import {
+  getSshFilesystemProvider,
+  onSshFilesystemProviderRegistered
+} from '../providers/ssh-filesystem-dispatch'
+import { supportsRemoteTranscriptRangeRead } from '../runtime/orchestration/worker-transcript-remote-range-read'
 import { isSshRequestOutcomeUnverifiable } from '../ssh/ssh-channel-multiplexer'
-import { parseSshTranscriptPath, type SshTranscriptLocation } from './ssh-transcript-path'
+import {
+  parseSshTranscriptPath,
+  toSshTranscriptPath,
+  type SshTranscriptLocation
+} from './ssh-transcript-path'
 import { WslTranscriptFsError } from './wsl-transcript-fs-error'
 
 export const SSH_TRANSCRIPT_PROVIDER_UNAVAILABLE_MESSAGE =
@@ -15,10 +23,33 @@ export const SSH_TRANSCRIPT_PROVIDER_UNAVAILABLE_MESSAGE =
 const SSH_TRANSCRIPT_TRANSPORT_MESSAGE =
   'The SSH host did not answer in time. Chat will resume when the connection recovers.'
 
-/** A remote transcript opened for positional reads; carries no host handle. */
+/** A remote transcript opened for positional reads; carries no host handle.
+ *  On a relay without ranged reads it holds one whole-file snapshot instead. */
 export type SshTranscriptFsHandle = {
   readonly kind: 'ssh-transcript'
   readonly location: SshTranscriptLocation
+  readonly snapshot: Buffer | null
+}
+
+/** Ranged-read support per target, probed once and forgotten when the relay reconnects. */
+const rangeReadSupport = new Map<string, Promise<boolean>>()
+let watchingProviderRegistrations = false
+
+function supportsRangeReads(targetId: string, provider: IFilesystemProvider): Promise<boolean> {
+  if (!watchingProviderRegistrations) {
+    // Subscribed on first use, not at import: this module sits in the fs-access graph.
+    watchingProviderRegistrations = true
+    onSshFilesystemProviderRegistered((registered) => rangeReadSupport.delete(registered))
+  }
+  let probe = rangeReadSupport.get(targetId)
+  if (!probe) {
+    probe = supportsRemoteTranscriptRangeRead(provider).catch(() => {
+      rangeReadSupport.delete(targetId)
+      return false
+    })
+    rangeReadSupport.set(targetId, probe)
+  }
+  return probe
 }
 
 export function isSshTranscriptFsHandle(value: unknown): value is SshTranscriptFsHandle {
@@ -55,6 +86,12 @@ function providerFor(location: SshTranscriptLocation): IFilesystemProvider {
   return provider
 }
 
+/** A torn-down relay never consulted the host: same verdict as a lost link. */
+function isSshRelayUnreachable(error: unknown): boolean {
+  const code = error instanceof Error && 'code' in error ? error.code : undefined
+  return code === 'DISPOSED' || isSshRequestOutcomeUnverifiable(error)
+}
+
 /** Relay errors carry no errno; the readers key "missing" off `code === 'ENOENT'`. */
 function enoent(path: string): NodeJS.ErrnoException {
   const error: NodeJS.ErrnoException = new Error(`ENOENT: no such file or directory, '${path}'`)
@@ -83,7 +120,7 @@ async function remotePathExists(
     if (error instanceof WslTranscriptFsError) {
       throw error
     }
-    if (isSshRequestOutcomeUnverifiable(error)) {
+    if (isSshRelayUnreachable(error)) {
       throw unavailable(SSH_TRANSCRIPT_TRANSPORT_MESSAGE)
     }
     if (provider.pathsExist) {
@@ -103,7 +140,7 @@ async function classify(
   if (error instanceof WslTranscriptFsError) {
     throw error
   }
-  if (isSshRequestOutcomeUnverifiable(error)) {
+  if (isSshRelayUnreachable(error)) {
     throw unavailable(SSH_TRANSCRIPT_TRANSPORT_MESSAGE)
   }
   if (!(await remotePathExists(provider, remotePath))) {
@@ -145,7 +182,9 @@ function toDirent(parentPath: string, name: string, isDirectory: boolean, isSyml
     parentPath,
     path: parentPath,
     isFile: () => !isDirectory && !isSymlink,
-    isDirectory: () => isDirectory,
+    // Why: the relay reports a link's target type for the explorer; session
+    // walkers use lstat semantics so a cyclic link is never followed.
+    isDirectory: () => isDirectory && !isSymlink,
     isSymbolicLink: () => isSymlink,
     isBlockDevice: () => false,
     isCharacterDevice: () => false,
@@ -203,13 +242,28 @@ export async function sshTranscriptReadFile(path: string): Promise<string> {
   }
 }
 
+/** The whole file, for hosts whose relay predates ranged reads. */
+async function readSnapshot(location: SshTranscriptLocation, path: string): Promise<Buffer> {
+  const provider = providerFor(location)
+  try {
+    return Buffer.from((await provider.readFile(location.remotePath)).content, 'utf8')
+  } catch (error) {
+    return classify(provider, path, location.remotePath, error)
+  }
+}
+
 export async function sshTranscriptOpen(path: string): Promise<SshTranscriptFsHandle> {
   const location = locate(path)
   const provider = providerFor(location)
   if (!(await remotePathExists(provider, location.remotePath))) {
     throw enoent(path)
   }
-  return { kind: 'ssh-transcript', location }
+  if (await supportsRangeReads(location.targetId, provider)) {
+    return { kind: 'ssh-transcript', location, snapshot: null }
+  }
+  // Why one snapshot per open, never per chunk: re-reading a growing file per
+  // positional read is quadratic (filesystem-provider-contract.ts).
+  return { kind: 'ssh-transcript', location, snapshot: await readSnapshot(location, path) }
 }
 
 /**
@@ -226,8 +280,18 @@ export async function sshTranscriptRead(
   signal?: AbortSignal
 ): Promise<{ bytesRead: number; buffer: Buffer }> {
   const provider = providerFor(handle.location)
-  if (!provider.readFileRange) {
-    throw new FileRangeReadUnsupportedError()
+  if (handle.snapshot || !provider.readFileRange) {
+    const snapshot =
+      handle.snapshot ??
+      (await readSnapshot(
+        handle.location,
+        toSshTranscriptPath(handle.location.targetId, handle.location.remotePath)
+      ))
+    const bytesRead = Math.max(0, Math.min(length, snapshot.length - position))
+    if (bytesRead > 0) {
+      snapshot.copy(buffer, offset, position, position + bytesRead)
+    }
+    return { bytesRead, buffer }
   }
   let bytesRead = 0
   while (bytesRead < length) {
@@ -242,6 +306,26 @@ export async function sshTranscriptRead(
         { signal }
       )
     } catch (error) {
+      if (error instanceof FileRangeReadUnsupportedError) {
+        rangeReadSupport.set(handle.location.targetId, Promise.resolve(false))
+        const snapshot = await readSnapshot(
+          handle.location,
+          toSshTranscriptPath(handle.location.targetId, handle.location.remotePath)
+        )
+        const fromSnapshot = Math.max(
+          0,
+          Math.min(length - bytesRead, snapshot.length - (position + bytesRead))
+        )
+        if (fromSnapshot > 0) {
+          snapshot.copy(
+            buffer,
+            offset + bytesRead,
+            position + bytesRead,
+            position + bytesRead + fromSnapshot
+          )
+        }
+        return { bytesRead: bytesRead + fromSnapshot, buffer }
+      }
       return classify(provider, `${handle.location.remotePath}`, handle.location.remotePath, error)
     }
     if (chunk.bytesRead === 0) {

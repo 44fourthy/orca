@@ -117,19 +117,27 @@ describe('canToggleNativeChat', () => {
     ).toBe(true)
   })
 
-  it.each(['gemini', 'opencode'] as const)(
-    'rejects unsupported agent %s detected live',
-    (agent) => {
-      expect(
-        canToggleNativeChat({
-          experimentalNativeChatEnabled: true,
-          contentType: 'terminal',
-          launchAgent: null,
-          detectedAgent: agent
-        })
-      ).toBe(false)
-    }
-  )
+  it('rejects unsupported agent gemini detected live', () => {
+    expect(
+      canToggleNativeChat({
+        experimentalNativeChatEnabled: true,
+        contentType: 'terminal',
+        launchAgent: null,
+        detectedAgent: 'gemini'
+      })
+    ).toBe(false)
+  })
+
+  it('accepts OpenCode detected live', () => {
+    expect(
+      canToggleNativeChat({
+        experimentalNativeChatEnabled: true,
+        contentType: 'terminal',
+        launchAgent: null,
+        detectedAgent: 'opencode'
+      })
+    ).toBe(true)
+  })
 
   it('accepts Grok when resolved from the title', () => {
     expect(
