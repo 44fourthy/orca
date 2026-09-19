@@ -299,7 +299,10 @@ export function NativeChatMessageList({
 
   return (
     <NativeChatDisclosureContext.Provider value={disclosures}>
-      <div className="relative flex min-h-0 flex-1 flex-col">
+      {/* The chat surface sets code, paths and tool lines in the UI face too
+          (one typeface across prose and activity); terminals and editors keep
+          the real monospace `--font-mono` outside this subtree. */}
+      <div className="relative flex min-h-0 flex-1 flex-col [--font-mono:var(--font-sans)]">
         <div className="relative min-h-0 flex-1">
           <div
             ref={scrollRef}

@@ -46,7 +46,9 @@ export function NativeChatWorkingStatus({
             NATIVE_CHAT_TURN_STATUS_COPY.workingFor,
             { value0: duration }
           )
-  const className = `flex min-h-8 items-center gap-1 text-sm text-muted-foreground${thinking ? '' : ' border-b border-border'}`
+  // A quiet pill rather than a hairline: the row is the turn's one-line
+  // activity summary (Emdash-style), so it reads as a surface, not a divider.
+  const className = `flex min-h-8 items-center gap-1 rounded-md px-2.5 text-sm text-muted-foreground${thinking ? '' : ' bg-muted/60'}`
   const caret =
     workedSeconds != null ? (
       <ChevronRight
@@ -59,7 +61,7 @@ export function NativeChatWorkingStatus({
       <button
         type="button"
         data-native-chat-turn-status="settled"
-        className={`${className} w-full text-left hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/70`}
+        className={`${className} w-full text-left transition-colors hover:bg-accent hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring/70`}
         aria-label={translate(
           'components.native-chat.status.toggleDetails',
           NATIVE_CHAT_TURN_STATUS_COPY.toggleDetails

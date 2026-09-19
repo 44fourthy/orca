@@ -114,9 +114,11 @@ export const MessageRow = memo(function MessageRow({
   if (isUser) {
     return (
       <div ref={rowRef} className="group relative flex flex-col items-end gap-0.5">
-        {/* User turns get a distinct muted fill (not the card/canvas color) so
-            the prompt reads apart from the assistant's body copy. */}
-        <div className="max-w-[85%] rounded-lg rounded-tr-sm bg-muted px-3.5 py-2.5 text-sm text-foreground">
+        {/* User turns are an inverted bubble (primary surface + its foreground)
+            so the prompt reads apart from the assistant's body copy. Markdown
+            inside re-tints from the bubble's own ink: the document renderer's
+            links/code/quotes assume the canvas and would vanish on primary. */}
+        <div className="max-w-[85%] rounded-lg bg-primary px-3.5 py-2.5 text-sm text-primary-foreground [&_a]:text-primary-foreground [&_a:hover]:text-primary-foreground/80 [&_code]:bg-primary-foreground/15 [&_blockquote]:border-primary-foreground/40 [&_blockquote]:text-primary-foreground/80 [&_[data-native-chat-code-block]]:bg-primary-foreground/10">
           {markdown ? (
             <>
               <NativeChatImageAttachments

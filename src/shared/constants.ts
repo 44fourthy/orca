@@ -30,7 +30,7 @@ export {
 } from './worktree/card-properties'
 
 export const SCHEMA_VERSION = 1
-export const DEFAULT_APP_FONT_FAMILY = 'Geist'
+export const DEFAULT_APP_FONT_FAMILY = 'Albert Sans'
 export const DEFAULT_SHOW_SLEEPING_WORKSPACES = true
 export const DEFAULT_HIDE_SLEEPING_WORKSPACES = false
 export const DEFAULT_AGENT_ACTIVITY_DISPLAY_MODE: AgentActivityDisplayMode = 'compact'

@@ -16,7 +16,10 @@ export function NativeChatCodeBlock({
   const code = extractCodeText(children)
 
   return (
-    <div className="group/code relative my-3 min-w-0 max-w-full overflow-hidden rounded-md bg-accent">
+    <div
+      data-native-chat-code-block
+      className="group/code relative my-3 min-w-0 max-w-full overflow-hidden rounded-md bg-accent"
+    >
       {language ? (
         <div className="flex h-9 items-center justify-between border-b border-border/60 px-3">
           <span
