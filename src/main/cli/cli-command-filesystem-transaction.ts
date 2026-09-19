@@ -200,7 +200,9 @@ export function buildMacPrivilegedSymlinkTransaction(
     `if [ "$captured" -eq 1 ]; then ${restoreOrPreserve}; else /bin/rmdir ${quoteShell(transactionDirectory)}; fi; exit 73`
   return (
     `${capture}if /bin/mkdir ${quoteShell(publishDirectory)} && ` +
-    `/bin/ln -s ${quoteShell(args.launcherPath)} ${quoteShell(publishPath)} && ` +
+    // Why umask 022 here: macOS enforces a symlink's own mode on readlink, and the
+    // 077 above would leave a root-owned `lrwx------` link no user process can resolve.
+    `umask 022 && /bin/ln -s ${quoteShell(args.launcherPath)} ${quoteShell(publishPath)} && ` +
     `/bin/ln -P ${quoteShell(publishPath)} ${quoteShell(commandDirectory)}; then ` +
     `/bin/rm ${quoteShell(publishPath)}; /bin/rmdir ${quoteShell(publishDirectory)}; ` +
     `if [ "$captured" -eq 1 ]; then /bin/rm ${quoteShell(heldPath)}; fi; ` +
