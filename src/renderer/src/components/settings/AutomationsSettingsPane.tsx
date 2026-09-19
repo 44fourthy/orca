@@ -25,7 +25,7 @@ export function AutomationsSettingsPane({
           'auto.components.settings.automations.showButtonDescription',
           'Show the Automations shortcut in the sidebar.'
         )}
-        checked={settings.showAutomationsButton !== false}
+        checked={settings.showAutomationsButton === true}
         onChange={() =>
           void updateSettings({
             showAutomationsButton: settings.showAutomationsButton === false

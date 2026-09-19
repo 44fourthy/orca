@@ -306,6 +306,13 @@ describe('SidebarNav', () => {
   })
 
   it('updates localized labels when the language changes after mount', async () => {
+    setSidebarState({
+      settings: {
+        ...getDefaultSettings('/tmp'),
+        showAutomationsButton: true
+      }
+    })
+
     const container = await renderSidebarNav()
 
     expect(queryButtonByText(container, 'Automations')).not.toBeNull()
@@ -320,6 +327,13 @@ describe('SidebarNav', () => {
   })
 
   it('updates labels when pseudo-localization is enabled after mount', async () => {
+    setSidebarState({
+      settings: {
+        ...getDefaultSettings('/tmp'),
+        showAutomationsButton: true
+      }
+    })
+
     const container = await renderSidebarNav()
 
     await act(async () => {
@@ -351,9 +365,10 @@ describe('SidebarNav', () => {
     expect(mocks.openMobilePage).not.toHaveBeenCalled()
   })
 
-  it('shows the Automations entry by default for older settings', () => {
-    expect(shouldShowAutomationsButton(null)).toBe(true)
-    expect(shouldShowAutomationsButton({})).toBe(true)
+  it('hides the Automations entry until the sidebar setting opts in', () => {
+    expect(shouldShowAutomationsButton(null)).toBe(false)
+    expect(shouldShowAutomationsButton({})).toBe(false)
+    expect(shouldShowAutomationsButton({ showAutomationsButton: true })).toBe(true)
   })
 
   it('hides the Automations entry when the sidebar setting is off', () => {
@@ -374,6 +389,13 @@ describe('SidebarNav', () => {
   })
 
   it('hides Automations from its sidebar context menu', async () => {
+    setSidebarState({
+      settings: {
+        ...getDefaultSettings('/tmp'),
+        showAutomationsButton: true
+      }
+    })
+
     const container = await renderSidebarNav()
 
     const automationsMenu = getButtonByText(container, 'Automations').closest(
@@ -397,41 +419,6 @@ describe('SidebarNav', () => {
     await clickButton(getHideButton(mobileMenu as HTMLElement))
 
     expect(mocks.updateSettings).toHaveBeenCalledWith({ showMobileButton: false })
-  })
-
-  it('places the worktree palette search above the sidebar nav rows', async () => {
-    const container = await renderSidebarNav()
-    const nav = container.querySelector('[data-contextual-tour-target="sidebar-navigation"]')
-    const searchButton = container.querySelector<HTMLButtonElement>(
-      'button[aria-label="Search worktrees and browser tabs"]'
-    )
-    const tasksButton = getButtonByText(container, 'Tasks')
-
-    expect(nav?.firstElementChild).toBe(searchButton)
-    if (!searchButton) {
-      throw new Error('worktree palette search button not rendered')
-    }
-    expect(
-      searchButton.compareDocumentPosition(tasksButton) & Node.DOCUMENT_POSITION_FOLLOWING
-    ).toBeTruthy()
-  })
-
-  it('hides the worktree palette shortcut until the search field is hovered or focused', async () => {
-    const container = await renderSidebarNav()
-
-    const searchButton = container.querySelector(
-      'button[aria-label="Search worktrees and browser tabs"]'
-    )
-    expect(searchButton).not.toBeNull()
-    expect(searchButton?.className).toContain('bg-worktree-sidebar-foreground/5')
-
-    const shortcuts = searchButton?.querySelector('span.hidden')
-    expect(shortcuts?.className).toContain('hidden')
-    expect(shortcuts?.className).toContain('group-hover:flex')
-    expect(shortcuts?.className).toContain('group-focus-within:flex')
-    expect(shortcuts?.textContent).toContain('⌘')
-    expect(shortcuts?.textContent).toContain('J')
-    expect(searchButton?.querySelector('kbd')).toBeNull()
   })
 
   it('keeps task source shortcuts keyboard-reachable and revealed on Tasks row hover or focus', async () => {

@@ -1,5 +1,4 @@
 import { app } from 'electron'
-import { is } from '@electron-toolkit/utils'
 import {
   DEV_CHANNEL_PLATFORM_LABEL,
   getVersionChannel,
@@ -13,6 +12,7 @@ import {
 import { compareVersions } from '../updater-fallback'
 import { listReleaseBuilds, resolveTargetBuild } from '../updater-release-builds'
 import { UpdaterMenuChecks } from './updater-menu-checks'
+import { isUpdaterDisabled } from './updater-availability'
 
 /** Handles local-build selection and exact release-channel/tag jumps. */
 export abstract class UpdaterBuildSelection extends UpdaterMenuChecks {
@@ -73,7 +73,7 @@ export abstract class UpdaterBuildSelection extends UpdaterMenuChecks {
 
   /** Pins the updater at one exact release tag and checks it, so a dev can move to any published build on any channel — including an older one. */
   protected async checkForPinnedBuild(channel: ReleaseChannel, tag: string): Promise<void> {
-    if (!app.isPackaged || is.dev) {
+    if (isUpdaterDisabled()) {
       this.sendStatus({ state: 'not-available', userInitiated: true })
       return
     }

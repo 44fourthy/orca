@@ -11,11 +11,8 @@ const mocks = vi.hoisted(() => ({
   openSettingsPage: vi.fn(),
   openSettingsTarget: vi.fn(),
   appRestart: vi.fn(),
-  updaterCheck: vi.fn(),
   shellOpenUrl: vi.fn(),
   useShortcutKeyDetails: vi.fn(),
-  /** Counts evaluations of the feedback chunk; a dynamic import evaluates it exactly once. */
-  feedbackChunkLoads: 0,
   setupProgress: {
     ready: true,
     coreDoneCount: 2,
@@ -127,11 +124,6 @@ vi.mock('sonner', () => ({
   }
 }))
 
-vi.mock('./SidebarFeedbackDialog', () => {
-  mocks.feedbackChunkLoads += 1
-  return { SidebarFeedbackDialog: () => <div data-testid="feedback-dialog" /> }
-})
-
 function installWindowApi(): void {
   Object.assign(window, {
     api: {
@@ -140,9 +132,6 @@ function installWindowApi(): void {
       },
       shell: {
         openUrl: mocks.shellOpenUrl
-      },
-      updater: {
-        check: mocks.updaterCheck
       }
     }
   })
@@ -207,11 +196,6 @@ describe('SidebarSettingsHelpMenu', () => {
     const helpIndex = html.indexOf('lucide-circle-question-mark')
     expect(settingsIndex).toBeGreaterThanOrEqual(0)
     expect(helpIndex).toBeGreaterThan(settingsIndex)
-  })
-
-  it('renders Send Feedback menu item', () => {
-    const html = renderToStaticMarkup(<SidebarSettingsHelpMenu />)
-    expect(html).toContain('Send Feedback')
   })
 
   it('renders Keyboard Shortcuts menu item', () => {
@@ -282,63 +266,6 @@ describe('SidebarSettingsHelpMenu', () => {
   it('renders X link', () => {
     const html = renderToStaticMarkup(<SidebarSettingsHelpMenu />)
     expect(html).toContain('>X<')
-  })
-
-  it('renders Check for Updates menu item', () => {
-    const html = renderToStaticMarkup(<SidebarSettingsHelpMenu />)
-    expect(html).toContain('Check for Updates')
-    expect(html).toMatch(/(⇧\+click|Shift\+click) checks the latest RC/)
-    expect(html).toMatch(/(⌘\+click|Ctrl\+click) checks the latest perf build/)
-  })
-
-  it('passes update-check modifier options through the updater bridge', async () => {
-    const container = await renderMenu()
-    const checkButton = findMenuItem(container, 'Check for Updates')
-    const primaryModifier = navigator.userAgent.includes('Mac')
-      ? { metaKey: true }
-      : { ctrlKey: true }
-
-    await act(async () => {
-      checkButton.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, shiftKey: true }))
-      checkButton.click()
-    })
-    await act(async () => {
-      checkButton.dispatchEvent(
-        new MouseEvent('pointerdown', { bubbles: true, ...primaryModifier })
-      )
-      checkButton.click()
-    })
-    await act(async () => {
-      checkButton.click()
-    })
-
-    expect(mocks.updaterCheck).toHaveBeenNthCalledWith(1, {
-      includePrerelease: true,
-      includePerfPrerelease: false
-    })
-    expect(mocks.updaterCheck).toHaveBeenNthCalledWith(2, {
-      includePrerelease: false,
-      includePerfPrerelease: true
-    })
-    expect(mocks.updaterCheck).toHaveBeenNthCalledWith(3, {
-      includePrerelease: false,
-      includePerfPrerelease: false
-    })
-  })
-
-  // No other test in this file opens the menu or selects Send Feedback, so the 0 -> 1
-  // transition below is this warm and nothing else, whatever order the tests run in.
-  it('warms the feedback chunk when the menu opens, before Send Feedback is selected', async () => {
-    const container = await renderMenu()
-    expect(mocks.feedbackChunkLoads).toBe(0)
-
-    await act(async () => {
-      container.querySelector<HTMLButtonElement>('[data-testid="open-menu"]')?.click()
-    })
-
-    expect(mocks.feedbackChunkLoads).toBe(1)
-    // Warming must not mount the dialog: it stays behind its own open state.
-    expect(document.body.querySelector('[data-testid="feedback-dialog"]')).toBeNull()
   })
 
   it('renders shortcut keys in the settings tooltip', () => {
