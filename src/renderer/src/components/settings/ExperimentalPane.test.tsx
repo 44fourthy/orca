@@ -224,7 +224,7 @@ describe('ExperimentalPane', () => {
 
   it('shows the structured-native-chat child setting only when Chat UI is the default view', async () => {
     const updateSettings = vi.fn()
-    const disabledSettings = getDefaultSettings('/tmp')
+    const disabledSettings = { ...getDefaultSettings('/tmp'), experimentalNativeChat: false }
     const disabledMarkup = renderToStaticMarkup(
       <ExperimentalPane settings={disabledSettings} updateSettings={vi.fn()} />
     )
@@ -316,7 +316,7 @@ describe('ExperimentalPane', () => {
 
   it('shows Chat UI default-mode as a child setting only when Chat UI is enabled', async () => {
     const updateSettings = vi.fn()
-    const disabledSettings = getDefaultSettings('/tmp')
+    const disabledSettings = { ...getDefaultSettings('/tmp'), experimentalNativeChat: false }
     const disabledMarkup = renderToStaticMarkup(
       <ExperimentalPane settings={disabledSettings} updateSettings={vi.fn()} />
     )

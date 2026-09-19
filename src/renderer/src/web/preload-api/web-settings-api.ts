@@ -23,6 +23,7 @@ import { noopUnsubscribe } from './web-storage'
 
 export function createWebSettingsApi(): Partial<PreloadApi> {
   return {
+    // oxlint-disable-next-line typescript/consistent-type-assertions -- SAFETY: the closing `satisfies Partial<WebSettingsApi> as unknown as WebSettingsApi` widens a web-only subset; `satisfies` still type-checks every member that is present.
     settings: {
       get: async () => getRuntimeBackedStoredSettings(),
       // Why: localStorage-backed settings are synchronous, so the pre-hydration kill-switch read works the same as desktop.
@@ -65,6 +66,12 @@ export function createWebSettingsApi(): Partial<PreloadApi> {
         if ('autoRenameBranchFromWorkDefaultedOn' in sanitizedUpdates) {
           sanitizedUpdates.autoRenameBranchFromWorkDefaultedOn = true
         }
+        if ('appFontFamilyDefaultedToAlbertSans' in sanitizedUpdates) {
+          sanitizedUpdates.appFontFamilyDefaultedToAlbertSans = true
+        }
+        if ('nativeChatDefaultedOn' in sanitizedUpdates) {
+          sanitizedUpdates.nativeChatDefaultedOn = true
+        }
         if ('terminalCursorStyle' in sanitizedUpdates) {
           Object.assign(
             sanitizedUpdates,
@@ -79,7 +86,11 @@ export function createWebSettingsApi(): Partial<PreloadApi> {
           delete localUpdates.worktreeVisibilityDefaults
         }
         const next = mergeSettings(getStoredSettings(), localUpdates, {
-          preserveAutoRenameBranchFromWorkUpdate: 'autoRenameBranchFromWork' in sanitizedUpdates
+          preserveAutoRenameBranchFromWorkUpdate: 'autoRenameBranchFromWork' in sanitizedUpdates,
+          preserveAppFontFamilyUpdate: 'appFontFamily' in sanitizedUpdates,
+          preserveNativeChatUpdate:
+            'experimentalNativeChat' in sanitizedUpdates ||
+            'openAgentTabsInChatByDefault' in sanitizedUpdates
         })
         writeStoredSettings(next)
         return settingsForActiveVisibilityOwner(

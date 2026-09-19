@@ -37,6 +37,17 @@ describe('getDefaultSettings', () => {
     expect(getDefaultSettings('/tmp').autoRenameBranchFromWorkDefaultedOn).toBe(true)
   })
 
+  it('defaults the interface font to Albert Sans and guards the migration for new settings', () => {
+    expect(getDefaultSettings('/tmp').appFontFamily).toBe('Albert Sans')
+    expect(getDefaultSettings('/tmp').appFontFamilyDefaultedToAlbertSans).toBe(true)
+  })
+
+  it('opens supported agent tabs in the chat UI by default for new settings', () => {
+    expect(getDefaultSettings('/tmp').experimentalNativeChat).toBe(true)
+    expect(getDefaultSettings('/tmp').openAgentTabsInChatByDefault).toBe(true)
+    expect(getDefaultSettings('/tmp').nativeChatDefaultedOn).toBe(true)
+  })
+
   it('uses a block terminal cursor by default for new settings', () => {
     expect(getDefaultSettings('/tmp').terminalCursorStyle).toBe('block')
     expect(getDefaultSettings('/tmp').terminalCursorStyleDefaultedToBlock).toBe(true)

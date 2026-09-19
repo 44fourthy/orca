@@ -129,6 +129,36 @@ describe('agent hooks CLI handler', () => {
     expect(readDataFile(userDataPath).settings.experimentalNewWorktreeCardStyle).toBe(true)
   })
 
+  it('migrates stock font and chat defaults instead of stamping guards over them offline', async () => {
+    const existing = getDefaultPersistedState(userDataPath)
+    existing.settings.appFontFamily = 'Geist'
+    existing.settings.experimentalNativeChat = false
+    delete existing.settings.appFontFamilyDefaultedToAlbertSans
+    delete existing.settings.nativeChatDefaultedOn
+    writeDataFile(userDataPath, existing)
+
+    await runAgentHooksOff(userDataPath)
+
+    const persisted = readDataFile(userDataPath).settings
+    expect(persisted.appFontFamily).toBe('Albert Sans')
+    expect(persisted.appFontFamilyDefaultedToAlbertSans).toBe(true)
+    expect(persisted.experimentalNativeChat).toBe(true)
+    expect(persisted.nativeChatDefaultedOn).toBe(true)
+  })
+
+  it('preserves guarded Geist and chat opt-out choices when updating offline settings', async () => {
+    const existing = getDefaultPersistedState(userDataPath)
+    existing.settings.appFontFamily = 'Geist'
+    existing.settings.experimentalNativeChat = false
+    writeDataFile(userDataPath, existing)
+
+    await runAgentHooksOff(userDataPath)
+
+    const persisted = readDataFile(userDataPath).settings
+    expect(persisted.appFontFamily).toBe('Geist')
+    expect(persisted.experimentalNativeChat).toBe(false)
+  })
+
   it('prepares managed Codex trust with the current hooks setting', async () => {
     const state = getDefaultPersistedState(userDataPath)
     state.settings.agentStatusHooksEnabled = false

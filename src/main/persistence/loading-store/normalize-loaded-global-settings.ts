@@ -33,6 +33,8 @@ export function normalizeLoadedGlobalSettings(
   const {
     migratedExperimentalActivity,
     migratedAutoRenameBranchFromWork,
+    migratedAppFontFamily,
+    migratedNativeChatDefaults,
     migratedTerminalCursorStyle,
     migratedTerminalLineHeight,
     terminalRightClickToPasteDefaultedForPlatform,
@@ -73,6 +75,8 @@ export function normalizeLoadedGlobalSettings(
     primarySelectionMiddleClickPasteDefaultedForTerminalDefaults:
       primarySelectionDefaultedForTerminalDefaults || stampPrimarySelectionTerminalDefaults,
     ...migratedAutoRenameBranchFromWork,
+    ...migratedAppFontFamily,
+    ...migratedNativeChatDefaults,
     ...migratedTerminalCursorStyle,
     terminalLineHeight: migratedTerminalLineHeight,
     // Why: the old true default was inherited, but false was always an explicit opt-out and must survive this one-shot reset.

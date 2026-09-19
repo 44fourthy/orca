@@ -157,6 +157,16 @@ export function updateSettings(
   if ('autoRenameBranchFromWork' in updates || 'autoRenameBranchFromWorkDefaultedOn' in updates) {
     sanitizedUpdates.autoRenameBranchFromWorkDefaultedOn = true
   }
+  if ('appFontFamily' in updates || 'appFontFamilyDefaultedToAlbertSans' in updates) {
+    sanitizedUpdates.appFontFamilyDefaultedToAlbertSans = true
+  }
+  if (
+    'experimentalNativeChat' in updates ||
+    'openAgentTabsInChatByDefault' in updates ||
+    'nativeChatDefaultedOn' in updates
+  ) {
+    sanitizedUpdates.nativeChatDefaultedOn = true
+  }
   if ('openInApplications' in updates) {
     sanitizedUpdates.openInApplications = normalizeOpenInApplications(updates.openInApplications)
   }

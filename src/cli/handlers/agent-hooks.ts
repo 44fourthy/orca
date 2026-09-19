@@ -12,6 +12,8 @@ import {
 } from '../runtime-client'
 import type { AgentHookInstallStatus } from '../../shared/agent-hook-types'
 import { getDefaultPersistedState } from '../../shared/constants'
+import { normalizeAppFontFamilyDefault } from '../../shared/app-font-family-settings'
+import { normalizeNativeChatDefaultOn } from '../../shared/native-chat-default-settings'
 import { normalizeDisabledTuiAgents } from '../../shared/tui-agent-selection'
 import type { GlobalSettings } from '../../shared/global-settings-types'
 import type { PersistedState } from '../../shared/persisted-state-types'
@@ -129,9 +131,13 @@ function updateEnabledOnDisk(enabled: boolean): {
 } {
   const dataPath = getDataPath()
   const state = readPersistedState(dataPath)
+  // Why: the defaults carry the fork's migration guards; migrate the stored values first so the
+  // spread cannot stamp a guard over an unmigrated stock profile.
   state.settings = {
     ...getDefaultPersistedState(homedir()).settings,
     ...state.settings,
+    ...normalizeAppFontFamilyDefault(state.settings),
+    ...normalizeNativeChatDefaultOn(state.settings),
     agentStatusHooksEnabled: enabled
   }
   writePersistedState(dataPath, state)

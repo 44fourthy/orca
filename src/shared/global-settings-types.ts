@@ -85,6 +85,8 @@ export type GlobalSettings = {
   uiLanguage: UiLanguage
   appIcon: AppIconId
   appFontFamily: string
+  /** One-shot guard: a persisted stock `Geist` default was migrated to Albert Sans. */
+  appFontFamilyDefaultedToAlbertSans?: boolean
   editorAutoSave: boolean
   editorAutoSaveDelayMs: number
   editorMinimapEnabled: boolean
@@ -213,10 +215,12 @@ export type GlobalSettings = {
   openLinksInAppModifierInverts?: boolean
   /** Show link actions on plain click in the terminal and chat; off restores modifier-click-only terminal links. */
   terminalLinkActionPopoverEnabled?: boolean
-  /** Opt-in: open new coding-agent tabs in native chat instead of the raw terminal; optional for legacy settings. */
+  /** Open new coding-agent tabs in native chat instead of the raw terminal; on by default in this fork, optional for legacy settings. */
   openAgentTabsInChatByDefault?: boolean
-  /** Experimental native chat surface for Claude/Codex sessions; off by default. */
+  /** Experimental native chat surface for Claude/Codex sessions; on by default in this fork. */
   experimentalNativeChat?: boolean
+  /** One-shot guard: persisted stock `false` chat defaults were migrated on. */
+  nativeChatDefaultedOn?: boolean
   /** Opt-in updated structured runtime; off keeps the existing PTY-backed native chat path. */
   experimentalStructuredNativeChat?: boolean
   /** Opt-in: resume working structured chats automatically on the next launch. Off still offers

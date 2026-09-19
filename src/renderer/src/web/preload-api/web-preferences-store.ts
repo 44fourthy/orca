@@ -1,5 +1,7 @@
 import type { PreloadApi } from '../../../../preload/api-types'
 import { normalizeAutoRenameBranchFromWorkDefaultOn } from '../../../../shared/auto-rename-branch-from-work-settings'
+import { normalizeAppFontFamilyDefault } from '../../../../shared/app-font-family-settings'
+import { normalizeNativeChatDefaultOn } from '../../../../shared/native-chat-default-settings'
 import {
   getDefaultSettings,
   getDefaultUIState,
@@ -36,6 +38,8 @@ export function getStoredSettings(): GlobalSettings {
   const migratedStored = {
     ...stored,
     ...normalizeAutoRenameBranchFromWorkDefaultOn(stored),
+    ...normalizeAppFontFamilyDefault(stored),
+    ...normalizeNativeChatDefaultOn(stored),
     ...normalizeTerminalCursorStyleDefault(stored),
     ...normalizeOsc52ClipboardDefaultOn(stored),
     terminalCustomThemes: normalizeTerminalCustomThemes(stored.terminalCustomThemes),
@@ -46,6 +50,12 @@ export function getStoredSettings(): GlobalSettings {
     (stored.autoRenameBranchFromWork !== migratedStored.autoRenameBranchFromWork ||
       stored.autoRenameBranchFromWorkDefaultedOn !==
         migratedStored.autoRenameBranchFromWorkDefaultedOn ||
+      stored.appFontFamily !== migratedStored.appFontFamily ||
+      stored.appFontFamilyDefaultedToAlbertSans !==
+        migratedStored.appFontFamilyDefaultedToAlbertSans ||
+      stored.experimentalNativeChat !== migratedStored.experimentalNativeChat ||
+      stored.openAgentTabsInChatByDefault !== migratedStored.openAgentTabsInChatByDefault ||
+      stored.nativeChatDefaultedOn !== migratedStored.nativeChatDefaultedOn ||
       stored.terminalCursorStyle !== migratedStored.terminalCursorStyle ||
       stored.terminalCursorStyleDefaultedToBlock !==
         migratedStored.terminalCursorStyleDefaultedToBlock ||
@@ -229,6 +239,10 @@ export async function syncRuntimeBackedSettings(
     )
     const runtimeSettings = { ...result.settings }
     delete runtimeSettings.activeRuntimeEnvironmentId
+    // Why: the host projection always carries these but web never forwards them, so a
+    // stock host's reply must not turn a migrated or local chat preference into a guarded opt-out.
+    delete runtimeSettings.experimentalNativeChat
+    delete runtimeSettings.openAgentTabsInChatByDefault
     const updatedVisibilityDefaults = normalizeWorktreeVisibilityDefaults(
       runtimeSettings.worktreeVisibilityDefaults
     )

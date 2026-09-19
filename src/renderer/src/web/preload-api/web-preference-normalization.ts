@@ -1,4 +1,6 @@
 import { normalizeAutoRenameBranchFromWorkDefaultOn } from '../../../../shared/auto-rename-branch-from-work-settings'
+import { normalizeAppFontFamilyDefault } from '../../../../shared/app-font-family-settings'
+import { normalizeNativeChatDefaultOn } from '../../../../shared/native-chat-default-settings'
 import {
   getDefaultSettings,
   normalizeAgentActivityDisplayMode,
@@ -132,7 +134,11 @@ export function mergeOsc52ClipboardNoticePending(
 export function mergeSettings(
   base: GlobalSettings,
   updates: Partial<GlobalSettings>,
-  options: { preserveAutoRenameBranchFromWorkUpdate?: boolean } = {}
+  options: {
+    preserveAutoRenameBranchFromWorkUpdate?: boolean
+    preserveAppFontFamilyUpdate?: boolean
+    preserveNativeChatUpdate?: boolean
+  } = {}
 ): GlobalSettings {
   const defaults = getDefaultSettings('~')
   const merged = {
@@ -169,6 +175,12 @@ export function mergeSettings(
     ...merged,
     ...normalizeAutoRenameBranchFromWorkDefaultOn(merged, {
       preserveExplicitValue: options.preserveAutoRenameBranchFromWorkUpdate
+    }),
+    ...normalizeAppFontFamilyDefault(merged, {
+      preserveExplicitValue: options.preserveAppFontFamilyUpdate
+    }),
+    ...normalizeNativeChatDefaultOn(merged, {
+      preserveExplicitValue: options.preserveNativeChatUpdate
     })
   }
 }

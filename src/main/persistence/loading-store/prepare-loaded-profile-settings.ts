@@ -4,6 +4,8 @@ import type { ProjectGroup } from '../../../shared/project-group-types'
 import { deriveGlobalWindowsRuntimeDefaultFromLegacySettings } from '../../../shared/project-execution-runtime'
 import { normalizeTaskProviderSettings } from '../../../shared/task-providers'
 import { normalizeAutoRenameBranchFromWorkDefaultOn } from '../../../shared/auto-rename-branch-from-work-settings'
+import { normalizeAppFontFamilyDefault } from '../../../shared/app-font-family-settings'
+import { normalizeNativeChatDefaultOn } from '../../../shared/native-chat-default-settings'
 import {
   addMobilePairingCustomAddress,
   normalizeMobilePairingCustomAddress,
@@ -27,6 +29,14 @@ export type PreparedLoadedProfileSettings = {
   migratedAutoRenameBranchFromWork: Pick<
     GlobalSettings,
     'autoRenameBranchFromWork' | 'autoRenameBranchFromWorkDefaultedOn'
+  >
+  migratedAppFontFamily: Pick<
+    GlobalSettings,
+    'appFontFamily' | 'appFontFamilyDefaultedToAlbertSans'
+  >
+  migratedNativeChatDefaults: Pick<
+    GlobalSettings,
+    'experimentalNativeChat' | 'openAgentTabsInChatByDefault' | 'nativeChatDefaultedOn'
   >
   migratedTerminalCursorStyle: Pick<
     GlobalSettings,
@@ -72,6 +82,18 @@ export function prepareLoadedProfileSettings(
   const migratedAutoRenameBranchFromWork = normalizeAutoRenameBranchFromWorkDefaultOn(
     parsed.settings
   )
+  // Why (fork): stock profiles persisted Geist and chat-off as if chosen; migrate each once.
+  const migratedAppFontFamily = normalizeAppFontFamilyDefault(parsed.settings)
+  if (
+    parsed.settings?.appFontFamilyDefaultedToAlbertSans !== true ||
+    parsed.settings?.appFontFamily !== migratedAppFontFamily.appFontFamily
+  ) {
+    markNeedsSave()
+  }
+  const migratedNativeChatDefaults = normalizeNativeChatDefaultOn(parsed.settings)
+  if (parsed.settings?.nativeChatDefaultedOn !== true) {
+    markNeedsSave()
+  }
   const migratedTerminalCursorStyle = normalizeTerminalCursorStyleDefault(parsed.settings)
   if (
     parsed.settings?.terminalCursorStyle !== migratedTerminalCursorStyle.terminalCursorStyle ||
@@ -232,6 +254,8 @@ export function prepareLoadedProfileSettings(
   return {
     migratedExperimentalActivity,
     migratedAutoRenameBranchFromWork,
+    migratedAppFontFamily,
+    migratedNativeChatDefaults,
     migratedTerminalCursorStyle,
     migratedTerminalLineHeight,
     terminalRightClickToPasteDefaultedForPlatform,
