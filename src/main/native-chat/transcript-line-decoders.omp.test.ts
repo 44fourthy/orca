@@ -49,7 +49,9 @@ describe('decodeOmpTranscriptLine', () => {
     )
     expect(decoded?.role).toBe('assistant')
     expect(decoded?.blocks).toEqual([
-      { type: 'text', text: 'Checking the goal' },
+      // The role stays `assistant`; `reasoning` just marks the thinking block so
+      // the chat can hide it with the rest of the activity.
+      { type: 'text', text: 'Checking the goal', reasoning: true },
       { type: 'text', text: 'Reading it now.' },
       { type: 'tool-call', name: 'goal', input: { op: 'get' } }
     ])
@@ -61,7 +63,9 @@ describe('decodeOmpTranscriptLine', () => {
       'f'
     )
     expect(decoded?.role).toBe('assistant')
-    expect(decoded?.blocks).toEqual([{ type: 'text', text: 'Weighing two options' }])
+    expect(decoded?.blocks).toEqual([
+      { type: 'text', text: 'Weighing two options', reasoning: true }
+    ])
   })
 
   it('passes tool arguments through unchanged', () => {

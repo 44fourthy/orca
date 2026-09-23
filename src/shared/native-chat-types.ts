@@ -36,6 +36,10 @@ export type NativeChatRole = (typeof NATIVE_CHAT_ROLES)[number]
 export type NativeChatTextBlock = {
   type: 'text'
   text: string
+  /** Provider reasoning surfaced as text — Claude's `thinking` records on a
+   *  provider that returns visible reasoning. Lets the chat hide thinking with
+   *  the rest of the activity instead of guessing which prose is an aside. */
+  reasoning?: true
   /** Optional journal display hints; readers narrow only the values they know. */
   presentation?: string
   tone?: string

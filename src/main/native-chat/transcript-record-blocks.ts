@@ -75,9 +75,13 @@ function claudeContentBlock(record: Record<string, unknown>): NativeChatBlock | 
       return text ? { type: 'text', text } : null
     }
     case 'thinking': {
-      // Reasoning surfaces as a text block; the message role marks it as reasoning.
+      // Reasoning surfaces as a text block flagged `reasoning`, so the chat can
+      // hide thinking with the rest of the activity. Anthropic redacts these
+      // (empty text) and they drop here; providers that return visible
+      // reasoning — DeepSeek behind the Claude Code proxy, for one — reach the
+      // transcript, where an unflagged block would read as the agent's answer.
       const text = extractString(record.thinking) ?? extractString(record.text)
-      return text ? { type: 'text', text } : null
+      return text ? { type: 'text', text, reasoning: true } : null
     }
     case 'tool_use': {
       const name = extractString(record.name) ?? 'tool'

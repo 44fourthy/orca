@@ -49,6 +49,9 @@ function derive(blocks: readonly NativeChatBlock[], hideToolActivity: boolean) {
           !isSubagentGroupBlock(block) &&
           !isBackgroundTaskBlock(block) &&
           !taskTwins.twinTextIndexes.has(index) &&
+          // Provider reasoning rides in as flagged text; hidden activity means
+          // the reply reads alone, without the thinking that produced it.
+          !(hideToolActivity && block.type === 'text' && block.reasoning === true) &&
           !(
             (hideToolActivity || groups.length > 0) &&
             block.type === 'text' &&

@@ -35,6 +35,19 @@ describe('native chat row content — hidden tool activity', () => {
     expect(visible.tools.length).toBeGreaterThan(0)
   })
 
+  it('drops flagged reasoning text when activity is hidden, keeps plain prose', () => {
+    const blocks: NativeChatBlock[] = [
+      { type: 'text', text: 'The user wants the branch name. Let me check.', reasoning: true },
+      { type: 'text', text: '**`dev`** — that is your test branch.' }
+    ]
+    const hidden = deriveNativeChatRowContent(blocks, { hideToolActivity: true })
+    expect(hidden.markdown).not.toContain('Let me check')
+    expect(hidden.markdown).toContain('test branch')
+
+    const visible = deriveNativeChatRowContent(blocks)
+    expect(visible.markdown).toContain('Let me check')
+  })
+
   it('keeps one cache entry per flag so the two derivations never cross', () => {
     const blocks = [call('Read'), result()]
     const hidden = deriveNativeChatRowContent(blocks, { hideToolActivity: true })

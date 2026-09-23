@@ -203,7 +203,7 @@ function ompContentBlock(record: Record<string, unknown> | null): NativeChatBloc
     }
     case 'thinking': {
       const text = extractString(record.thinking) ?? extractString(record.text)
-      return text ? { type: 'text', text } : null
+      return text ? { type: 'text', text, reasoning: true } : null
     }
     case 'toolCall': {
       const name = extractString(record.name) ?? 'tool'
