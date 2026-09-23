@@ -1,0 +1,139 @@
+name: Fork macOS build (ad-hoc signed)
+
+# Produces an installable macOS arm64 build of this fork.
+#
+# Mirrors the upstream release pipeline (build:release, electron-builder with the
+# repo's own config) but with no signing identity: electron-builder's signing is
+# switched off and the bundle is signed ad-hoc inside-out afterwards. Lessons
+# carried over from the same exercise on another Electron fork:
+#
+#  1. It must run on macOS — electron-builder invokes @electron/rebuild, and
+#     node-gyp refuses to cross-compile native modules.
+#  2. It must build the whole workspace, and beforePack requires the mobile web
+#     bundle, so the pipeline is `pnpm run build:release` rather than a filtered
+#     build.
+#  3. Native modules must be built for Electron's ABI, not the runner's Node —
+#     `ensure-native-runtime.mjs --runtime=electron` runs immediately before
+#     packaging, like the release job.
+#  4. Signing is inside-out (files, then bundles, then the outer app);
+#     `codesign --deep` produces a bundle the kernel rejects at launch.
+#
+# Nothing is published: the artifact is a workflow artifact, downloaded with
+# `gh run download` (which does not set com.apple.quarantine).
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  macos-arm64:
+    runs-on: macos-14
+    timeout-minutes: 120
+
+    env:
+      # electron-builder finds no identity on this runner; the app is signed
+      # below instead, so its own signing pass must not fail the build.
+      CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/setup@v2
+        with:
+          install: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: package.json
+          cache: pnpm
+          cache-dependency-path: |
+            pnpm-lock.yaml
+            mobile/pnpm-lock.yaml
+
+      # beforePack asserts the mobile web bundle exists, and that bundle
+      # resolves React Native and Expo from mobile/node_modules.
+      - uses: ./.github/actions/install-mobile-dependencies
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --cpu=current,x64,arm64
+
+      - name: Build app
+        env:
+          # V8 sizes its default heap from physical memory, and the runner has
+          # far less than a workstation — without a cap the build dies with a
+          # bare "Reached heap limit" that names nothing.
+          NODE_OPTIONS: --max-old-space-size=6144
+        run: pnpm run build:release
+
+      - name: Compute local build identity
+        id: identity
+        run: |
+          node --input-type=module -e '
+            import("./config/scripts/build-mac-local.mjs").then((m) => {
+              const identity = m.getLocalBuildIdentity()
+              console.log(`version=${identity.version}`)
+              console.log(`commit=${identity.commit}`)
+            })
+          ' >> "$GITHUB_OUTPUT"
+
+      - name: Package the app (unpacked, so it can be signed first)
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
+          ORCA_LOCAL_BUILD_VERSION: ${{ steps.identity.outputs.version }}
+          ORCA_BUILD_COMMIT: ${{ steps.identity.outputs.commit }}
+        run: |
+          set -euo pipefail
+          node config/scripts/ensure-native-runtime.mjs --runtime=electron
+          pnpm exec electron-builder \
+            --config config/electron-builder.config.cjs \
+            --mac --arm64 --dir --publish never
+
+      - name: Sign the app (inside-out, ad-hoc)
+        run: |
+          set -euo pipefail
+          APP=$(find dist -maxdepth 2 -name 'Orca.app' -type d | head -1)
+          echo "signing: $APP"
+          [ -n "$APP" ] || { echo "no Orca.app produced"; exit 1; }
+
+          # Every Mach-O file first (dylibs, helper executables, framework
+          # binaries) — a bundle cannot be sealed while its contents are unsigned.
+          find "$APP" -type f -print0 | while IFS= read -r -d '' f; do
+            if file -b "$f" | grep -q 'Mach-O'; then
+              codesign --force --sign - --timestamp=none "$f" >/dev/null 2>&1 || true
+            fi
+          done
+
+          # Then the bundle containers, deepest first; nested apps (the Computer
+          # Use helper) before their frameworks; the outer app last.
+          find "$APP" -name '*.app' -type d -mindepth 1 | sort -r | while read -r nested; do
+            codesign --force --sign - --timestamp=none "$nested"
+          done
+          find "$APP/Contents/Frameworks" -maxdepth 1 -name '*.framework' | while read -r fw; do
+            codesign --force --sign - --timestamp=none "$fw"
+          done
+          codesign --force --sign - --timestamp=none "$APP/Contents/MacOS/Orca"
+          codesign --force --sign - --timestamp=none "$APP"
+
+          echo "--- verify ---"
+          codesign --verify --verbose=2 "$APP"
+          codesign -dv --verbose=2 "$APP" 2>&1 | grep -E 'Identifier|flags|Sealed' || true
+
+      - name: Archive the signed app
+        run: |
+          set -euo pipefail
+          APP=$(find dist -maxdepth 2 -name 'Orca.app' -type d | head -1)
+          # ditto preserves the signature, permissions and symlinks; `zip` does not.
+          ditto -c -k --sequesterRsrc --keepParent "$APP" /tmp/orca-macos-arm64-adhoc.zip
+          ls -lh /tmp/orca-macos-arm64-adhoc.zip
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: orca-macos-arm64-adhoc
+          path: /tmp/orca-macos-arm64-adhoc.zip
+          if-no-files-found: error
+          retention-days: 14
