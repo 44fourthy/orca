@@ -1,0 +1,75 @@
+name: Fork Linux build (AppImage)
+
+# Produces the x64 AppImage for the fork's headless runtimes (ron-dev deploys
+# run `AppRun serve` out of the extracted tree). Same pipeline as the macOS
+# workflow: whole-workspace release build, Electron-ABI natives, no publish.
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: read
+
+jobs:
+  linux-x64:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/setup@v2
+        with:
+          install: false
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: package.json
+          cache: pnpm
+          cache-dependency-path: |
+            pnpm-lock.yaml
+            mobile/pnpm-lock.yaml
+
+      - uses: ./.github/actions/install-mobile-dependencies
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --cpu=current
+
+      - name: Build app
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
+        run: pnpm run build:release
+
+      - name: Compute local build identity
+        id: identity
+        run: |
+          node --input-type=module -e '
+            import("./config/scripts/build-mac-local.mjs").then((m) => {
+              const identity = m.getLocalBuildIdentity()
+              console.log(`version=${identity.version}`)
+              console.log(`commit=${identity.commit}`)
+            })
+          ' >> "$GITHUB_OUTPUT"
+
+      - name: Package the AppImage
+        env:
+          NODE_OPTIONS: --max-old-space-size=6144
+          ORCA_LOCAL_BUILD_VERSION: ${{ steps.identity.outputs.version }}
+          ORCA_BUILD_COMMIT: ${{ steps.identity.outputs.commit }}
+        run: |
+          set -euo pipefail
+          node config/scripts/ensure-native-runtime.mjs --runtime=electron
+          pnpm exec electron-builder \
+            --config config/electron-builder.config.cjs \
+            --linux AppImage --x64 --publish never
+          ls -lh dist/*.AppImage
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: orca-linux-appimage
+          path: dist/*.AppImage
+          if-no-files-found: error
+          retention-days: 14
