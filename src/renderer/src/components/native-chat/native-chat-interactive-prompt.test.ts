@@ -241,6 +241,67 @@ describe('buildAskAnswerKeys', () => {
   })
 })
 
+describe('buildAskAnswerKeys — preview layout', () => {
+  // Any option with a preview switches Claude's selector to the side-by-side
+  // list + preview layout, where the bare option digit only moves the highlight
+  // and Enter commits (verified live against Claude Code 2.1.267; upstream
+  // #16865 — the digit-only answer never landed and the session stayed blocked).
+  const prev = (label: string) => ({ label, preview: `| ${label} |` })
+
+  it('single-select: follows the digit with the Enter the preview layout commits on', () => {
+    const prompt: AskPrompt = {
+      questions: [{ question: 'q', multiSelect: false, options: [prev('Tabs'), prev('Spaces')] }]
+    }
+    expect(buildAskAnswerKeys(prompt, [{ indices: [1] }])).toEqual([{ raw: '2' }, { raw: '\r' }])
+  })
+
+  it('no previews: keeps the digit-only commit', () => {
+    expect(buildAskAnswerKeys(single(['Tabs', 'Spaces']), [{ indices: [1] }])).toEqual([
+      { raw: '2' }
+    ])
+  })
+
+  it('multi-question: every answer commits with Enter, then one submit Enter', () => {
+    const prompt: AskPrompt = {
+      questions: [
+        { question: 'q1', multiSelect: false, options: [prev('Wide'), prev('Tall')] },
+        { question: 'q2', multiSelect: false, options: [prev('Light'), prev('Dark')] }
+      ]
+    }
+    expect(buildAskAnswerKeys(prompt, [{ indices: [0] }, { indices: [1] }])).toEqual([
+      { raw: '1' },
+      { raw: '\r' },
+      { raw: '2' },
+      { raw: '\r' },
+      { raw: '\r' }
+    ])
+  })
+
+  it('mixed prompt: only the preview question adds its Enter', () => {
+    const prompt: AskPrompt = {
+      questions: [
+        { question: 'q1', multiSelect: false, options: [{ label: 'A' }, { label: 'B' }] },
+        { question: 'q2', multiSelect: false, options: [prev('X'), prev('Y')] }
+      ]
+    }
+    expect(buildAskAnswerKeys(prompt, [{ indices: [0] }, { indices: [1] }])).toEqual([
+      { raw: '1' },
+      { raw: '2' },
+      { raw: '\r' },
+      { raw: '\r' }
+    ])
+  })
+
+  it('a whitespace-only preview does not switch the dialect', () => {
+    const prompt: AskPrompt = {
+      questions: [
+        { question: 'q', multiSelect: false, options: [{ label: 'A', preview: '  ' }, { label: 'B' }] }
+      ]
+    }
+    expect(buildAskAnswerKeys(prompt, [{ indices: [1] }])).toEqual([{ raw: '2' }])
+  })
+})
+
 describe('buildCodexAskAnswerKeys', () => {
   it("submits the final multi-question option without Claude's extra Enter", () => {
     const prompt: AskPrompt = {

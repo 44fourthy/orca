@@ -182,6 +182,28 @@ describe('parseAskFromStatus', () => {
     )
     expect(prompt?.questions[0]?.options.map((o) => o.label)).toEqual(['a', 'b'])
   })
+
+  it('carries option previews (non-empty only) so the answer builder can see the layout', () => {
+    const prompt = parseAskFromStatus(
+      JSON.stringify({
+        questions: [
+          {
+            question: 'Pick',
+            options: [
+              { label: 'a', preview: '| a |' },
+              { label: 'b', preview: '   ' },
+              { label: 'c' }
+            ]
+          }
+        ]
+      })
+    )
+    expect(prompt?.questions[0]?.options.map((o) => o.preview)).toEqual([
+      '| a |',
+      undefined,
+      undefined
+    ])
+  })
 })
 
 describe('resolveNativeChatAsk', () => {

@@ -61,10 +61,14 @@ function parseOptions(raw: unknown): AskOption[] {
         typeof option === 'object' &&
         typeof (option as { label?: unknown }).label === 'string'
       ) {
-        const value = option as { label: string; description?: unknown }
+        const value = option as { label: string; description?: unknown; preview?: unknown }
         return {
           label: value.label,
-          description: typeof value.description === 'string' ? value.description : undefined
+          description: typeof value.description === 'string' ? value.description : undefined,
+          preview:
+            typeof value.preview === 'string' && value.preview.trim().length > 0
+              ? value.preview
+              : undefined
         }
       }
       return null
@@ -208,16 +212,30 @@ const ASK_PREVIOUS_ROW = '\x1b[A'
 const ASK_NEXT_ROW = '\x1b[B'
 const ASK_NOTES = '\t'
 
+/** True when any option carries preview content. That switches Claude's selector
+ *  to the side-by-side list + preview layout, whose commit key differs (Enter,
+ *  not the bare option digit) and whose free-text affordance is notes (`n`)
+ *  rather than a "Type something" row. */
+function hasOptionPreview(question: AskQuestion): boolean {
+  return question.options.some((option) => (option.preview ?? '').trim().length > 0)
+}
+
 /** Build the ordered keystroke groups that answer a Claude Code AskUserQuestion.
  *  Each group is written a step apart so the selector applies it before the next.
  *
  *  - single-select pick  → the option number (selects AND commits; in a
- *    multi-question prompt it auto-advances to the next question)
+ *    multi-question prompt it auto-advances to the next question). When the
+ *    question has previews the digit only moves the highlight, so a separate
+ *    Enter follows it — verified against Claude Code 2.1.267's preview layout.
  *  - free-text answer    → the "Type something" row number, the text, then Enter
+ *    (plain layout only; the preview layout has no such row and routes free text
+ *    through notes instead — not handled here, and unused so far in practice)
  *  - multi-select        → each option number TOGGLES its checkbox, then a step
- *    to the Submit tab
+ *    to the Submit tab (plain-layout dialect; the preview layout toggles the
+ *    same way but its tab/commit keys are unverified, so it keeps this path)
  *  - a multi-question prompt (and a lone multi-select) finishes on a Submit
- *    confirmation, so it ends with one Enter
+ *    confirmation, so it ends with one Enter — which is also what the preview
+ *    layout's "Ready to submit your answers?" review screen commits on
  *
  *  (Option counts are ≤ the tool's cap of a few, so single-digit numbers always
  *  address every row.) */
@@ -254,6 +272,12 @@ export function buildAskAnswerKeys(
       )
     } else if ((sel?.indices.length ?? 0) > 0) {
       groups.push({ raw: String(sel!.indices[0]! + 1) })
+      // Why: in the preview layout the digit only moves the highlight; Enter is
+      // the commit. Without it the answer never lands, the card looks answered,
+      // and the session stays blocked on the selector (upstream #16865).
+      if (hasOptionPreview(q)) {
+        groups.push({ raw: ASK_ENTER })
+      }
     } else if (multiQuestion) {
       // Unanswered question in a multi-question prompt: step past it.
       groups.push({ raw: ASK_NEXT_TAB })

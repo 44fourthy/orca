@@ -1,7 +1,14 @@
 // Canonical AskUserQuestion prompt types consumed by the shared parser and both
 // native-chat platform UIs.
 
-export type AskOption = { label: string; description?: string }
+export type AskOption = {
+  label: string
+  description?: string
+  /** Optional per-option preview (Claude Code renders it beside the option list).
+   *  Its mere presence switches Claude's selector to a layout where Enter, not
+   *  the bare option digit, is what commits a pick — see buildAskAnswerKeys. */
+  preview?: string
+}
 export type AskQuestion = {
   question: string
   header?: string
