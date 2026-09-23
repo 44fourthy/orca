@@ -69,6 +69,35 @@ describe('transcript slots', () => {
     expect(hidden.map((slot) => slot.message.id)).toEqual(['u', 'a'])
   })
 
+  it('keeps only the turn’s final prose when tool activity is hidden', () => {
+    const commentary: NativeChatMessage = {
+      id: 'note',
+      role: 'assistant',
+      blocks: [{ type: 'text', text: 'Before I delete anything, let me check what dev and prod are.' }],
+      timestamp: 1,
+      source: 'transcript'
+    }
+    const tool: NativeChatMessage = {
+      id: 'tool',
+      role: 'assistant',
+      blocks: [{ type: 'tool-call', name: 'Bash', input: {} }],
+      timestamp: 1,
+      source: 'transcript'
+    }
+    const messages = [
+      text('u', 'consolidate the branches', 'user'),
+      commentary,
+      tool,
+      text('a', 'Verified from three sources — prod is safe to delete.')
+    ]
+
+    expect(build(messages).map((slot) => slot.message.id)).toEqual(['u', 'note', 'tool', 'a'])
+    expect(build(messages, { hideToolActivity: true }).map((slot) => slot.message.id)).toEqual([
+      'u',
+      'a'
+    ])
+  })
+
   it('gives a reasoning row no slot when tool activity is hidden', () => {
     const reasoning: NativeChatMessage = {
       id: 'r',

@@ -125,7 +125,7 @@ export function NativeChatExperimentalSetting({
               <p className="text-xs text-muted-foreground">
                 {translate(
                   'auto.components.settings.ExperimentalPane.nativeChat.hideToolActivityCopy',
-                  "Keeps tool calls, diffs, subagent rosters, background-task rows and the model's thinking out of the chat transcript, so only your messages and the agent's replies read as the conversation. The terminal view still shows everything."
+                  "Keeps tool calls, diffs, subagent rosters, background-task rows, the model's thinking and its between-tool progress notes out of the chat transcript, so each turn reads as your message and the agent's final reply. The terminal view still shows everything."
                 )}
               </p>
             </div>

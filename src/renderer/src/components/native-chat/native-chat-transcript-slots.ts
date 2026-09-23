@@ -83,12 +83,6 @@ export function buildNativeChatTranscriptSlots(
     lifecycleWorking
   } = input
   const hideToolActivity = input.hideToolActivity === true
-  // Reasoning rows are the model thinking aloud. Hidden activity means the
-  // transcript reads as the conversation, so a turn shows the reply, not the
-  // reasoning that led to it.
-  const rowDrawsContent = (message: NativeChatMessage): boolean =>
-    !(hideToolActivity && message.role === 'reasoning') &&
-    nativeChatRowRendersContent(message.blocks, { hideToolActivity })
   // One pass to decide what each row draws, then the fold over those readings —
   // so "is this the answer" and "does this row render prose" cannot disagree.
   const foldRows: NativeChatTurnFoldRow[] = messages.map((message, index) => {
@@ -109,6 +103,43 @@ export function buildNativeChatTranscriptSlots(
         )
     }
   })
+  // Answer-only: agents narrate progress between tool calls as ordinary text
+  // ("Before I delete anything, let me check…"), so with activity hidden a turn
+  // keeps only its LAST assistant prose run — the reply — and drops the
+  // commentary rows with the rest of the activity. Reasoning rows go too: they
+  // are the model thinking aloud, which is why the setting exists.
+  const commentaryIndexes = new Set<number>()
+  if (hideToolActivity) {
+    const lastProseByTurn = new Map<string, number>()
+    foldRows.forEach((row, index) => {
+      if (row.role === 'assistant' && row.rendersProse && row.turnKey !== undefined) {
+        lastProseByTurn.set(row.turnKey, index)
+      }
+    })
+    foldRows.forEach((row, index) => {
+      if (
+        row.role === 'assistant' &&
+        row.rendersProse &&
+        row.turnKey !== undefined &&
+        lastProseByTurn.get(row.turnKey) !== index
+      ) {
+        commentaryIndexes.add(index)
+        // The fold must not count commentary as the turn's answer.
+        row.rendersProse = false
+      }
+    })
+  }
+  const rowDrawsContent = (index: number): boolean => {
+    const message = messages[index]!
+    if (commentaryIndexes.has(index)) {
+      // Its only remaining content was prose; tool activity is hidden too.
+      return false
+    }
+    if (hideToolActivity && message.role === 'reasoning') {
+      return false
+    }
+    return nativeChatRowRendersContent(message.blocks, { hideToolActivity })
+  }
   const settledTurnKeys = new Set(
     showTurnStatus
       ? Object.entries(turnStatuses.completedByTurn)
@@ -138,7 +169,7 @@ export function buildNativeChatTranscriptSlots(
     // Skipping a folded row entirely is what keeps windowing honest: a counted
     // index the row declines to draw reserves estimated height for nothing and
     // opens a gap in the transcript.
-    const drawsRow = receipt !== undefined || (!folded && rowDrawsContent(message))
+    const drawsRow = receipt !== undefined || (!folded && rowDrawsContent(index))
     if (!drawsRow && status === undefined && turnDiff === undefined) {
       continue
     }
