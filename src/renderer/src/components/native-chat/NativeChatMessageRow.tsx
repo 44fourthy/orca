@@ -81,11 +81,12 @@ export const MessageRow = memo(function MessageRow({
   // bubble.
   // After all hooks, so hook order stays unconditional.
   if (
-    markdown.length === 0 &&
-    !hasImages &&
-    tools.length === 0 &&
-    subagentGroups.length === 0 &&
-    backgroundTasks.length === 0
+    (hideToolActivity && isReasoning) ||
+    (markdown.length === 0 &&
+      !hasImages &&
+      tools.length === 0 &&
+      subagentGroups.length === 0 &&
+      backgroundTasks.length === 0)
   ) {
     return null
   }

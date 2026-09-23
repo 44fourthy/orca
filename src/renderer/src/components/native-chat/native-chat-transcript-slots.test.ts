@@ -69,6 +69,23 @@ describe('transcript slots', () => {
     expect(hidden.map((slot) => slot.message.id)).toEqual(['u', 'a'])
   })
 
+  it('gives a reasoning row no slot when tool activity is hidden', () => {
+    const reasoning: NativeChatMessage = {
+      id: 'r',
+      role: 'reasoning',
+      blocks: [{ type: 'text', text: 'Let me think about which process owns port 5000.' }],
+      timestamp: 1,
+      source: 'transcript'
+    }
+    const messages = [text('u', 'kill the server', 'user'), reasoning, text('a', 'Done.')]
+
+    expect(build(messages).map((slot) => slot.message.id)).toContain('r')
+    expect(build(messages, { hideToolActivity: true }).map((slot) => slot.message.id)).toEqual([
+      'u',
+      'a'
+    ])
+  })
+
   it('gives no slot to a message with nothing to draw', () => {
     const slots = build([text('a', 'visible'), text('blank', ''), text('b', 'also visible')])
     expect(slots.map((slot) => slot.message.id)).toEqual(['a', 'b'])

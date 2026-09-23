@@ -83,6 +83,12 @@ export function buildNativeChatTranscriptSlots(
     lifecycleWorking
   } = input
   const hideToolActivity = input.hideToolActivity === true
+  // Reasoning rows are the model thinking aloud. Hidden activity means the
+  // transcript reads as the conversation, so a turn shows the reply, not the
+  // reasoning that led to it.
+  const rowDrawsContent = (message: NativeChatMessage): boolean =>
+    !(hideToolActivity && message.role === 'reasoning') &&
+    nativeChatRowRendersContent(message.blocks, { hideToolActivity })
   // One pass to decide what each row draws, then the fold over those readings —
   // so "is this the answer" and "does this row render prose" cannot disagree.
   const foldRows: NativeChatTurnFoldRow[] = messages.map((message, index) => {
@@ -90,7 +96,9 @@ export function buildNativeChatTranscriptSlots(
     return {
       turnKey: turnKeys[index],
       role: message.role,
-      rendersProse: content.markdown.length > 0 || content.hasImages,
+      rendersProse:
+        !(hideToolActivity && message.role === 'reasoning') &&
+        (content.markdown.length > 0 || content.hasImages),
       // The raw blocks, not the renderable ones: a childless roster draws no row
       // and its plain-text twin is then the only record the spawn happened.
       // Hidden activity draws nothing at all, so its roster cannot outlive a fold.
@@ -130,9 +138,7 @@ export function buildNativeChatTranscriptSlots(
     // Skipping a folded row entirely is what keeps windowing honest: a counted
     // index the row declines to draw reserves estimated height for nothing and
     // opens a gap in the transcript.
-    const drawsRow =
-      receipt !== undefined ||
-      (!folded && nativeChatRowRendersContent(message.blocks, { hideToolActivity }))
+    const drawsRow = receipt !== undefined || (!folded && rowDrawsContent(message))
     if (!drawsRow && status === undefined && turnDiff === undefined) {
       continue
     }
