@@ -202,7 +202,7 @@ describe('useNativeChatComposerAttachments', () => {
       })
     })
     expect(ownedId).not.toBeNull()
-    expect(probe.notice()).toBeNull()
+    expect(probe.notice()).toBe('')
 
     // Without the ownership proof the gate still refuses client-local chips.
     act(() => {
