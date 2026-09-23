@@ -1,4 +1,4 @@
-import { type MutableRefObject } from 'react'
+import type { MutableRefObject } from 'react'
 import type { BrowserChromeShortcutScope, GrabIntent } from '../describe-page/browser-page-types'
 import { useBrowserPageGrabShortcuts } from '../annotate/use-browser-page-grab-shortcuts'
 import { useBrowserPageWebviewShortcuts } from './use-browser-page-webview-shortcuts'

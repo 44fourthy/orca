@@ -1,24 +1,15 @@
-import { useCallback, useEffect, useEffectEvent, useLayoutEffect, useRef, useState } from 'react'
-import { useShortcutLabel } from '@/hooks/useShortcutLabel'
-import { translate } from '@/i18n/i18n'
-import { createBrowserUuid } from '@/lib/browser-uuid'
-import { ORCA_BROWSER_BLANK_URL } from '../../../../shared/constants'
-import { useGrabMode } from './annotate/useGrabMode'
-import { useBrowserPageAnnotationSend } from './annotate/use-browser-page-annotation-send'
-import { useBrowserPageGrabAnnotations } from './annotate/use-browser-page-grab-annotations'
-import { useBrowserPageGrabShortcuts } from './annotate/use-browser-page-grab-shortcuts'
-import { BrowserGuestGrabOverlays } from './annotate/browser-guest-grab-overlays'
-import { syncGuestAnnotationViewportBridge } from './annotate/guest-annotation-viewport-bridge'
-import { BrowserElementToolButtons } from './assemble-chrome/browser-chrome-toolbar'
-import { BrowserPageChromeBanners } from './assemble-chrome/browser-page-chrome-banners'
-import type { BrowserOverlayViewport } from './describe-page/browser-annotation-geometry'
+import { useClientHostedBrowserGrab } from './annotate/use-client-hosted-browser-grab'
+import {
+  ClientHostedBrowserGrabOverlays,
+  ClientHostedBrowserGrabTools
+} from './assemble-chrome/client-hosted-browser-grab-chrome'
 import { BrowserPageZoomIndicator } from './assemble-chrome/browser-page-zoom-indicator'
+import { ClientHostedBrowserPaneNotices } from './assemble-chrome/client-hosted-browser-pane-notices'
 import { useAppStore } from '@/store'
 import type {
   BrowserLoadError,
   BrowserPage as BrowserPageState
 } from '../../../../shared/browser-workspace-types'
-import { toHttpsRecoveryUrl } from '../../../../shared/browser-url'
 import type { RuntimeBrowserClientPlacement } from '../../../../shared/runtime-browser-placement'
 import {
   readBrowserClientPageGuestMetadataIfLive,
@@ -33,10 +24,8 @@ import { useBrowserClientHostedDownloadNotices } from './browser-client-hosted-d
 import { useBrowserClientHostedPopupNotices } from './browser-client-hosted-popup-notices'
 import { useBrowserClientHostedPermissionNotices } from './browser-client-hosted-permission-notices'
 import { useClientHostedBrowserIntroTour } from './use-client-hosted-browser-intro-tour'
-import { ClientHostedBrowserUnavailableNotice } from './client-hosted-browser-unavailable-notice'
 import { watchBrowserClientPageGuestLoss } from './host-guest/browser-client-page-guest-loss'
 import { useRestoredClientHostedRecoveryWindow } from './restored-client-hosted-recovery-window'
-import { useClientHostedBrowserMarkup } from './annotate/use-client-hosted-browser-markup'
 import BrowserFind from './assemble-chrome/BrowserFind'
 import { BrowserNavigationControlRow } from './assemble-chrome/browser-navigation-control-row'
 import BrowserAddressBar from './assemble-chrome/BrowserAddressBar'
@@ -50,7 +39,6 @@ import { getBrowserPageZoomIndicatorState } from './host-guest/browser-page-zoom
 import { useBrowserPageWebviewShortcuts } from './host-guest/use-browser-page-webview-shortcuts'
 import { useClientHostedGuestActivationFocus } from './host-guest/use-client-hosted-guest-activation-focus'
 import { useBrowserPageZoomFeedback } from './host-guest/use-browser-page-zoom-feedback'
-import { BrowserLoadFailureOverlay } from './navigate/browser-load-failure-overlay'
 import { useClientHostedPageUrlSubmission } from './navigate/use-client-hosted-page-url-submission'
 import { convertBrowserPageToWorkspaceDoc } from '@/lib/file-preview'
 import { useBrowserPageReloadActions } from './navigate/use-browser-page-reload-actions'
@@ -58,7 +46,6 @@ import { resolveActiveBrowserLoadFailure } from './navigate/browser-load-failure
 import { consumeBrowserPageDeferredNavigation } from './navigate/browser-page-deferred-navigation'
 import {
   getBrowserDisplayTitle,
-  getOpenableExternalUrl,
   toDisplayUrl
 } from './describe-page/browser-page-url-display'
 import type {
@@ -91,17 +78,6 @@ export function ClientHostedBrowserPagePane({
 }): React.JSX.Element {
   const viewportRef = useRef<HTMLDivElement | null>(null)
   const webviewRef = useRef<Electron.WebviewTag | null>(null)
-  const [overlayContainer, setOverlayContainer] = useState<HTMLDivElement | null>(null)
-  const [resourceNotice, setResourceNotice] = useState<string | null>(null)
-  const [browserOverlayViewport, setBrowserOverlayViewport] = useState<BrowserOverlayViewport>({
-    version: 0
-  })
-  // Why the callback ref and not a ref write: the annotation overlays anchor through it, and a
-  // ref write alone would leave the first render's anchors without a container.
-  const bindViewport = useCallback((element: HTMLDivElement | null) => {
-    viewportRef.current = element
-    setOverlayContainer(element)
-  }, [])
   const addressBarInputRef = useRef<HTMLInputElement | null>(null)
   // Why: a worktree switch unmounts this pane while main keeps the guest, so the failure has to
   // be seeded from the stored page — a fresh null here reads as "no failure" and the next sync
@@ -337,26 +313,6 @@ export function ClientHostedBrowserPagePane({
 
   useClientHostedGuestActivationFocus({ isActive, guestFocus, keepAddressBarFocusRef })
 
-  const annotationSend = useBrowserPageAnnotationSend({
-    browserTabId: browserTab.id,
-    worktreeId
-  })
-  const grab = useGrabMode(browserTab.id)
-  // Why: both tools drive the same in-guest picker, so only one may be armed at a time.
-  const grabIsInteractive = grab.state !== 'idle' && grab.state !== 'error'
-  const grabAnnotations = useBrowserPageGrabAnnotations({
-    browserTabId: browserTab.id,
-    isActive,
-    grab,
-    containerRef: viewportRef,
-    trackingContainer: overlayContainer,
-    webviewRef,
-    setBrowserOverlayViewport,
-    browserAnnotationsLength: annotationSend.browserAnnotations.length,
-    setBrowserAnnotationTrayOpen: annotationSend.setBrowserAnnotationTrayOpen
-  })
-  const grabElementShortcut = useShortcutLabel('browser.grabElement')
-
   const showFailureOverlay = !attachmentError && Boolean(browserTab.loadError)
   // Why: the failure is about the URL that failed, not whatever page is still loaded — feeding
   // browserTab.url here named the previous page and offered it an HTTPS retry it never needed.
@@ -366,51 +322,20 @@ export function ClientHostedBrowserPagePane({
     isDefaultZoom: zoom.browserZoomPercent === zoom.browserDefaultZoomPercent
   })
 
-  const markup = useClientHostedBrowserMarkup({
-    webviewRef,
-    browserPageId: browserTab.id,
+  const grab = useClientHostedBrowserGrab({
+    browserTab,
+    workspaceId,
+    worktreeId,
+    chromeShortcutScope,
+    isActive,
     runtimeEnvironmentId,
     placement,
-    isActive,
     unavailable: Boolean(attachmentError) || restoredPageUnrecovered,
     showFailureOverlay,
-    toolLocked: grabIsInteractive
+    pageHostGeneration,
+    viewportRef,
+    webviewRef
   })
-
-  useBrowserPageGrabShortcuts({
-    browserTabId: browserTab.id,
-    workspaceId,
-    chromeShortcutScope,
-    markupIsActive: markup.isActive,
-    startGrabIntent: grabAnnotations.startGrabIntent,
-    handleGrabActionShortcut: grabAnnotations.handleGrabActionShortcut,
-    grabIsInteractive
-  })
-
-  // Badges for stored annotations render in-guest so they track scroll without a message per frame.
-  const annotationBridgeTokenRef = useRef<string>('')
-  annotationBridgeTokenRef.current ||= createBrowserUuid().replaceAll('-', '')
-  const annotationsForBridge = annotationSend.browserAnnotations
-  const pendingAnnotationForBridge = grabAnnotations.pendingAnnotationPayload
-  useEffect(() => {
-    syncGuestAnnotationViewportBridge({
-      toolTargetId: browserTab.id,
-      annotations: annotationsForBridge,
-      pendingPayload: pendingAnnotationForBridge,
-      surfaceActive: isActive,
-      token: annotationBridgeTokenRef.current
-    })
-  }, [browserTab.id, annotationsForBridge, pendingAnnotationForBridge, isActive, pageHostGeneration])
-
-  const isBlankTab = browserTab.url === 'about:blank' || browserTab.url === ORCA_BROWSER_BLANK_URL
-  const elementToolsDisabled =
-    !isActive ||
-    placement === null ||
-    Boolean(attachmentError) ||
-    restoredPageUnrecovered ||
-    showFailureOverlay ||
-    isBlankTab ||
-    markup.isActive
 
   return (
     <div className="relative flex h-full min-h-0 flex-1 flex-col bg-background">
@@ -457,48 +382,14 @@ export function ClientHostedBrowserPagePane({
           }
           reloadLabel={reload.reloadButtonLabel}
         >
-          <BrowserElementToolButtons
-            elementTools={{
-              activeIntent: grabIsInteractive ? grabAnnotations.grabIntent : null,
-              onStartIntent: grabAnnotations.startGrabIntent,
-              disabled: elementToolsDisabled,
-              grabShortcutLabel: grabElementShortcut,
-              annotationCount: annotationSend.browserAnnotations.length
-            }}
-          />
-          {markup.drawButton}
+          <ClientHostedBrowserGrabTools grab={grab} />
         </BrowserNavigationControlRow>
       </div>
-      <BrowserPageChromeBanners
-        resourceNotice={resourceNotice}
-        setResourceNotice={setResourceNotice}
-        grab={grab}
-        grabIntent={grabAnnotations.grabIntent}
-        pendingAnnotationPayload={grabAnnotations.pendingAnnotationPayload}
-        browserAnnotationsLength={annotationSend.browserAnnotations.length}
-        annotationBannerSendOpen={annotationSend.annotationBannerSendOpen}
-        handleAnnotationBannerSendOpenChange={annotationSend.handleAnnotationBannerSendOpenChange}
-        worktreeId={worktreeId}
-        activeGroupId={annotationSend.activeGroupId}
-        browserAnnotationsPrompt={annotationSend.browserAnnotationsPrompt}
-        handleBrowserAnnotationsSentToAgent={annotationSend.handleBrowserAnnotationsSentToAgent}
-        handleCopyBrowserAnnotations={annotationSend.handleCopyBrowserAnnotations}
-        browserAnnotationsCopied={annotationSend.browserAnnotationsCopied}
-        handleClearBrowserAnnotations={annotationSend.handleClearBrowserAnnotations}
-        setPendingAnnotationPayload={grabAnnotations.setPendingAnnotationPayload}
-      />
-      <div ref={bindViewport} className="relative min-h-0 flex-1 overflow-hidden bg-background">
-        {markup.overlay}
-        <BrowserGuestGrabOverlays
-          grab={grab}
-          annotationSend={annotationSend}
-          grabAnnotations={grabAnnotations}
-          containerRef={viewportRef}
-          webviewRef={webviewRef}
-          browserOverlayViewport={browserOverlayViewport}
-          worktreeId={worktreeId}
-        />
-
+      <div
+        ref={grab.bindViewport}
+        className="relative min-h-0 flex-1 overflow-hidden bg-background"
+      >
+        <ClientHostedBrowserGrabOverlays grab={grab} />
         <BrowserPageZoomIndicator
           state={browserZoomIndicatorState}
           percent={zoom.browserZoomPercent}
@@ -509,40 +400,19 @@ export function ClientHostedBrowserPagePane({
           webviewRef={webviewRef}
           guestGeneration={pageHostGeneration}
         />
-        {showFailureOverlay && browserTab.loadError ? (
-          <BrowserLoadFailureOverlay
-            loadError={browserTab.loadError}
-            currentUrl={toDisplayUrl(failedNavigationUrl)}
-            httpsRecoveryUrl={toHttpsRecoveryUrl(failedNavigationUrl)}
-            onRetry={() => reload.runReloadTrigger('reload')}
-            onTryHttps={navigateToUrl}
-            onCopy={(url) => {
-              void window.api.ui.writeClipboardText(url)
-              setResourceNotice(
-                translate('browser.loadFailure.addressCopied', 'Copied the current page address.')
-              )
-            }}
-            onOpenExternal={(url) => void window.api.shell.openUrl(url)}
-            externalUrl={getOpenableExternalUrl(failedNavigationUrl)}
-            certificateFailure={certificateFailure}
-            expectedBrowserPageId={browserTab.id}
-            // Why: the guest is a local Electron webview on this desktop, so its certificate
-            // decision is a local session decision — the same IPC the local pane proceeds through.
-            onProceedCertificate={(challengeId) =>
-              window.api.browser.proceedCertificate({
-                browserPageId: browserTab.id,
-                challengeId
-              })
-            }
-          />
-        ) : null}
-        {attachmentError || restoredPageUnrecovered ? (
-          <ClientHostedBrowserUnavailableNotice
-            runtimeEnvironmentId={runtimeEnvironmentId}
-            worktreeId={worktreeId}
-            lastCommittedUrl={browserTab.url}
-          />
-        ) : null}
+        <ClientHostedBrowserPaneNotices
+          showFailureOverlay={showFailureOverlay}
+          loadError={browserTab.loadError}
+          failedNavigationUrl={failedNavigationUrl}
+          certificateFailure={certificateFailure}
+          browserPageId={browserTab.id}
+          onRetry={() => reload.runReloadTrigger('reload')}
+          onTryHttps={navigateToUrl}
+          unavailable={Boolean(attachmentError) || restoredPageUnrecovered}
+          runtimeEnvironmentId={runtimeEnvironmentId}
+          worktreeId={worktreeId}
+          lastCommittedUrl={browserTab.url}
+        />
       </div>
     </div>
   )
