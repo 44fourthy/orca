@@ -101,7 +101,7 @@ afterEach(() => {
 })
 
 function renderPane(overrides: Partial<PaneProps> = {}) {
-  const webview = document.createElement('webview') as Electron.WebviewTag
+  const webview = document.createElement('webview')
   Object.assign(webview, {
     getURL: () => 'https://example.internal/app',
     getTitle: () => 'App',
