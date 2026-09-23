@@ -1,4 +1,5 @@
 import { memo, useCallback, useRef } from 'react'
+import { useAppStore } from '../../store'
 import CommentMarkdown, {
   type CommentMarkdownLinkClickHandler
 } from '@/components/sidebar/CommentMarkdown'
@@ -58,10 +59,13 @@ export const MessageRow = memo(function MessageRow({
   runtimeContext?: RuntimeFileOperationArgs | null
 }): React.JSX.Element | null {
   const rowRef = useRef<HTMLDivElement | null>(null)
+  const hideToolActivity = useAppStore(
+    (state) => state.settings?.nativeChatHideToolActivity === true
+  )
   // One pass per block set, shared with the list that decides whether this row
   // occupies a slot — so "draws nothing" means the same thing to both.
   const { backgroundTasks, hasImages, markdown, prose, subagentGroups, tools } =
-    deriveNativeChatRowContent(message.blocks)
+    deriveNativeChatRowContent(message.blocks, { hideToolActivity })
   const isUser = message.role === 'user'
   const isReasoning = message.role === 'reasoning'
   const isSystem = message.role === 'system'

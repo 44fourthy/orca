@@ -58,6 +58,9 @@ export type NativeChatTranscriptSlotsInput = {
   showTurnStatus: boolean
   /** Turns the reader opened. Everything else with a duration stays folded. */
   expandedTurnKeys: ReadonlySet<string>
+  /** Hide tool-call/result, roster and task rows (fork default). The row
+   *  component derives with the same flag, so "draws nothing" agrees. */
+  hideToolActivity?: boolean
   isWorking: boolean
   /** Session-level lifecycle, which outlives a transcript that never said "done". */
   lifecycleWorking: boolean
@@ -79,19 +82,23 @@ export function buildNativeChatTranscriptSlots(
     isWorking,
     lifecycleWorking
   } = input
+  const hideToolActivity = input.hideToolActivity === true
   // One pass to decide what each row draws, then the fold over those readings —
   // so "is this the answer" and "does this row render prose" cannot disagree.
   const foldRows: NativeChatTurnFoldRow[] = messages.map((message, index) => {
-    const content = deriveNativeChatRowContent(message.blocks)
+    const content = deriveNativeChatRowContent(message.blocks, { hideToolActivity })
     return {
       turnKey: turnKeys[index],
       role: message.role,
       rendersProse: content.markdown.length > 0 || content.hasImages,
       // The raw blocks, not the renderable ones: a childless roster draws no row
       // and its plain-text twin is then the only record the spawn happened.
-      outlivesTurn: message.blocks.some(
-        (block) => isSubagentGroupBlock(block) || isBackgroundTaskBlock(block)
-      )
+      // Hidden activity draws nothing at all, so its roster cannot outlive a fold.
+      outlivesTurn:
+        !hideToolActivity &&
+        message.blocks.some(
+          (block) => isSubagentGroupBlock(block) || isBackgroundTaskBlock(block)
+        )
     }
   })
   const settledTurnKeys = new Set(
@@ -124,7 +131,8 @@ export function buildNativeChatTranscriptSlots(
     // index the row declines to draw reserves estimated height for nothing and
     // opens a gap in the transcript.
     const drawsRow =
-      receipt !== undefined || (!folded && nativeChatRowRendersContent(message.blocks))
+      receipt !== undefined ||
+      (!folded && nativeChatRowRendersContent(message.blocks, { hideToolActivity }))
     if (!drawsRow && status === undefined && turnDiff === undefined) {
       continue
     }

@@ -7173,7 +7173,10 @@
             "structuredToggleLabel": "Toggle updated structured native chat",
             "resumeTitle": "Resume working chats automatically after a restart",
             "resumeCopy": "When Orca quits or installs an update, chats that were mid-turn are automatically resumed when Orca is reopened.",
-            "resumeToggleLabel": "Toggle automatic resume after a restart"
+            "resumeToggleLabel": "Toggle automatic resume after a restart",
+            "hideToolActivityTitle": "Hide tool activity",
+            "hideToolActivityCopy": "Keeps tool calls, diffs, subagent rosters and background-task rows out of the chat transcript, so only your messages and the agent's replies read as the conversation. The terminal view still shows everything.",
+            "hideToolActivityToggleLabel": "Toggle hidden tool activity"
           },
           "agentDashboard": {
             "title": "Agent Dashboard",

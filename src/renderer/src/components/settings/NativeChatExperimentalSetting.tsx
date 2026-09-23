@@ -21,6 +21,7 @@ export function NativeChatExperimentalSetting({
   const nativeChatEnabled = settings.experimentalNativeChat === true
   const structuredNativeChatEnabled = settings.experimentalStructuredNativeChat === true
   const resumeOnRestartEnabled = settings.nativeChatResumeWorkOnRestart === true
+  const hideToolActivityEnabled = settings.nativeChatHideToolActivity === true
   const defaultView: NativeChatDefaultView =
     settings.openAgentTabsInChatByDefault === true ? 'native-chat' : 'terminal-chat'
 
@@ -111,6 +112,33 @@ export function NativeChatExperimentalSetting({
                 </SelectItem>
               </SelectContent>
             </Select>
+          </div>
+
+          <div className="flex items-start justify-between gap-4">
+            <div className="min-w-0 shrink space-y-0.5">
+              <Label>
+                {translate(
+                  'auto.components.settings.ExperimentalPane.nativeChat.hideToolActivityTitle',
+                  'Hide tool activity'
+                )}
+              </Label>
+              <p className="text-xs text-muted-foreground">
+                {translate(
+                  'auto.components.settings.ExperimentalPane.nativeChat.hideToolActivityCopy',
+                  "Keeps tool calls, diffs, subagent rosters and background-task rows out of the chat transcript, so only your messages and the agent's replies read as the conversation. The terminal view still shows everything."
+                )}
+              </p>
+            </div>
+            <SettingsSwitch
+              checked={hideToolActivityEnabled}
+              ariaLabel={translate(
+                'auto.components.settings.ExperimentalPane.nativeChat.hideToolActivityToggleLabel',
+                'Toggle hidden tool activity'
+              )}
+              onChange={() =>
+                updateSettings({ nativeChatHideToolActivity: !hideToolActivityEnabled })
+              }
+            />
           </div>
 
           {/* Structured chat rides the Chat UI default view; it has no entry path under Terminal

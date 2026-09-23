@@ -233,6 +233,10 @@ export type GlobalSettings = {
   /** Opt-in: resume working structured chats automatically on the next launch. Off still offers
    *  the list, so the user sees exactly what would run before anything spends tokens. */
   nativeChatResumeWorkOnRestart?: boolean
+  /** Keeps tool-call/result, subagent-roster and background-task rows out of the
+   *  chat transcript, so it reads as the conversation's messages only. Off by
+   *  default (upstream behavior); the terminal view always shows everything. */
+  nativeChatHideToolActivity?: boolean
   /** Last explicit native-chat model + option selections; live panes need an applied/dispatched record before showing a value. */
   nativeChatSessionOptions?: PersistedNativeChatSessionOptions
   /** Extra launcher rows for the worktree "Open in" submenu. VS Code is always shown first. */

@@ -1,5 +1,6 @@
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { ArrowDown } from 'lucide-react'
+import { useAppStore } from '../../store'
 import type { CommentMarkdownLinkClickHandler } from '@/components/sidebar/CommentMarkdown'
 import { translate } from '@/i18n/i18n'
 import type { NativeChatLiveSession } from './use-native-chat-live-session'
@@ -179,6 +180,9 @@ export function NativeChatMessageList({
     thinking
   })
   const lifecycleWorking = session.transcriptLifecycle?.state === 'working'
+  const hideToolActivity = useAppStore(
+    (state) => state.settings?.nativeChatHideToolActivity === true
+  )
   const slots = useMemo(
     () =>
       buildNativeChatTranscriptSlots({
@@ -191,12 +195,14 @@ export function NativeChatMessageList({
         turnDiffs,
         showTurnStatus,
         expandedTurnKeys: expandedTurnIds,
+        hideToolActivity,
         isWorking,
         lifecycleWorking
       }),
     [
       currentTurnKey,
       expandedTurnIds,
+      hideToolActivity,
       isWorking,
       latestUserIndex,
       lifecycleWorking,

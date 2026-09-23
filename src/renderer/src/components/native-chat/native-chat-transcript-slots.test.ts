@@ -50,6 +50,25 @@ function build(
 describe('transcript slots', () => {
   // A counted row that draws nothing is a gap in the transcript: it reserves
   // estimated height for a bubble that never appears.
+  it('gives a tool-only row no slot when tool activity is hidden', () => {
+    const toolOnly: NativeChatMessage = {
+      id: 'tool',
+      role: 'assistant',
+      blocks: [{ type: 'tool-call', name: 'Read', input: {} }],
+      timestamp: 1,
+      source: 'transcript'
+    }
+    const messages = [text('u', 'do the thing', 'user'), text('a', 'done'), toolOnly]
+
+    const visible = build(messages)
+    expect(visible.map((slot) => slot.message.id)).toContain('tool')
+
+    // Hidden activity draws nothing, and a counted row that draws nothing is a
+    // gap in the transcript — so it must take no slot at all.
+    const hidden = build(messages, { hideToolActivity: true })
+    expect(hidden.map((slot) => slot.message.id)).toEqual(['u', 'a'])
+  })
+
   it('gives no slot to a message with nothing to draw', () => {
     const slots = build([text('a', 'visible'), text('blank', ''), text('b', 'also visible')])
     expect(slots.map((slot) => slot.message.id)).toEqual(['a', 'b'])
