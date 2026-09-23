@@ -1,4 +1,17 @@
-import { useEffectEvent, useLayoutEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useEffectEvent, useLayoutEffect, useRef, useState } from 'react'
+import { useShortcutLabel } from '@/hooks/useShortcutLabel'
+import { translate } from '@/i18n/i18n'
+import { createBrowserUuid } from '@/lib/browser-uuid'
+import { ORCA_BROWSER_BLANK_URL } from '../../../../shared/constants'
+import { useGrabMode } from './annotate/useGrabMode'
+import { useBrowserPageAnnotationSend } from './annotate/use-browser-page-annotation-send'
+import { useBrowserPageGrabAnnotations } from './annotate/use-browser-page-grab-annotations'
+import { useBrowserPageGrabShortcuts } from './annotate/use-browser-page-grab-shortcuts'
+import { BrowserGuestGrabOverlays } from './annotate/browser-guest-grab-overlays'
+import { syncGuestAnnotationViewportBridge } from './annotate/guest-annotation-viewport-bridge'
+import { BrowserElementToolButtons } from './assemble-chrome/browser-chrome-toolbar'
+import { BrowserPageChromeBanners } from './assemble-chrome/browser-page-chrome-banners'
+import type { BrowserOverlayViewport } from './describe-page/browser-annotation-geometry'
 import { BrowserPageZoomIndicator } from './assemble-chrome/browser-page-zoom-indicator'
 import { useAppStore } from '@/store'
 import type {
@@ -78,6 +91,17 @@ export function ClientHostedBrowserPagePane({
 }): React.JSX.Element {
   const viewportRef = useRef<HTMLDivElement | null>(null)
   const webviewRef = useRef<Electron.WebviewTag | null>(null)
+  const [overlayContainer, setOverlayContainer] = useState<HTMLDivElement | null>(null)
+  const [resourceNotice, setResourceNotice] = useState<string | null>(null)
+  const [browserOverlayViewport, setBrowserOverlayViewport] = useState<BrowserOverlayViewport>({
+    version: 0
+  })
+  // Why the callback ref and not a ref write: the annotation overlays anchor through it, and a
+  // ref write alone would leave the first render's anchors without a container.
+  const bindViewport = useCallback((element: HTMLDivElement | null) => {
+    viewportRef.current = element
+    setOverlayContainer(element)
+  }, [])
   const addressBarInputRef = useRef<HTMLInputElement | null>(null)
   // Why: a worktree switch unmounts this pane while main keeps the guest, so the failure has to
   // be seeded from the stored page — a fresh null here reads as "no failure" and the next sync
@@ -313,6 +337,26 @@ export function ClientHostedBrowserPagePane({
 
   useClientHostedGuestActivationFocus({ isActive, guestFocus, keepAddressBarFocusRef })
 
+  const annotationSend = useBrowserPageAnnotationSend({
+    browserTabId: browserTab.id,
+    worktreeId
+  })
+  const grab = useGrabMode(browserTab.id)
+  // Why: both tools drive the same in-guest picker, so only one may be armed at a time.
+  const grabIsInteractive = grab.state !== 'idle' && grab.state !== 'error'
+  const grabAnnotations = useBrowserPageGrabAnnotations({
+    browserTabId: browserTab.id,
+    isActive,
+    grab,
+    containerRef: viewportRef,
+    trackingContainer: overlayContainer,
+    webviewRef,
+    setBrowserOverlayViewport,
+    browserAnnotationsLength: annotationSend.browserAnnotations.length,
+    setBrowserAnnotationTrayOpen: annotationSend.setBrowserAnnotationTrayOpen
+  })
+  const grabElementShortcut = useShortcutLabel('browser.grabElement')
+
   const showFailureOverlay = !attachmentError && Boolean(browserTab.loadError)
   // Why: the failure is about the URL that failed, not whatever page is still loaded — feeding
   // browserTab.url here named the previous page and offered it an HTTPS retry it never needed.
@@ -329,8 +373,44 @@ export function ClientHostedBrowserPagePane({
     placement,
     isActive,
     unavailable: Boolean(attachmentError) || restoredPageUnrecovered,
-    showFailureOverlay
+    showFailureOverlay,
+    toolLocked: grabIsInteractive
   })
+
+  useBrowserPageGrabShortcuts({
+    browserTabId: browserTab.id,
+    workspaceId,
+    chromeShortcutScope,
+    markupIsActive: markup.isActive,
+    startGrabIntent: grabAnnotations.startGrabIntent,
+    handleGrabActionShortcut: grabAnnotations.handleGrabActionShortcut,
+    grabIsInteractive
+  })
+
+  // Badges for stored annotations render in-guest so they track scroll without a message per frame.
+  const annotationBridgeTokenRef = useRef<string>('')
+  annotationBridgeTokenRef.current ||= createBrowserUuid().replaceAll('-', '')
+  const annotationsForBridge = annotationSend.browserAnnotations
+  const pendingAnnotationForBridge = grabAnnotations.pendingAnnotationPayload
+  useEffect(() => {
+    syncGuestAnnotationViewportBridge({
+      toolTargetId: browserTab.id,
+      annotations: annotationsForBridge,
+      pendingPayload: pendingAnnotationForBridge,
+      surfaceActive: isActive,
+      token: annotationBridgeTokenRef.current
+    })
+  }, [browserTab.id, annotationsForBridge, pendingAnnotationForBridge, isActive, pageHostGeneration])
+
+  const isBlankTab = browserTab.url === 'about:blank' || browserTab.url === ORCA_BROWSER_BLANK_URL
+  const elementToolsDisabled =
+    !isActive ||
+    placement === null ||
+    Boolean(attachmentError) ||
+    restoredPageUnrecovered ||
+    showFailureOverlay ||
+    isBlankTab ||
+    markup.isActive
 
   return (
     <div className="relative flex h-full min-h-0 flex-1 flex-col bg-background">
@@ -377,11 +457,48 @@ export function ClientHostedBrowserPagePane({
           }
           reloadLabel={reload.reloadButtonLabel}
         >
+          <BrowserElementToolButtons
+            elementTools={{
+              activeIntent: grabIsInteractive ? grabAnnotations.grabIntent : null,
+              onStartIntent: grabAnnotations.startGrabIntent,
+              disabled: elementToolsDisabled,
+              grabShortcutLabel: grabElementShortcut,
+              annotationCount: annotationSend.browserAnnotations.length
+            }}
+          />
           {markup.drawButton}
         </BrowserNavigationControlRow>
       </div>
-      <div ref={viewportRef} className="relative min-h-0 flex-1 overflow-hidden bg-background">
+      <BrowserPageChromeBanners
+        resourceNotice={resourceNotice}
+        setResourceNotice={setResourceNotice}
+        grab={grab}
+        grabIntent={grabAnnotations.grabIntent}
+        pendingAnnotationPayload={grabAnnotations.pendingAnnotationPayload}
+        browserAnnotationsLength={annotationSend.browserAnnotations.length}
+        annotationBannerSendOpen={annotationSend.annotationBannerSendOpen}
+        handleAnnotationBannerSendOpenChange={annotationSend.handleAnnotationBannerSendOpenChange}
+        worktreeId={worktreeId}
+        activeGroupId={annotationSend.activeGroupId}
+        browserAnnotationsPrompt={annotationSend.browserAnnotationsPrompt}
+        handleBrowserAnnotationsSentToAgent={annotationSend.handleBrowserAnnotationsSentToAgent}
+        handleCopyBrowserAnnotations={annotationSend.handleCopyBrowserAnnotations}
+        browserAnnotationsCopied={annotationSend.browserAnnotationsCopied}
+        handleClearBrowserAnnotations={annotationSend.handleClearBrowserAnnotations}
+        setPendingAnnotationPayload={grabAnnotations.setPendingAnnotationPayload}
+      />
+      <div ref={bindViewport} className="relative min-h-0 flex-1 overflow-hidden bg-background">
         {markup.overlay}
+        <BrowserGuestGrabOverlays
+          grab={grab}
+          annotationSend={annotationSend}
+          grabAnnotations={grabAnnotations}
+          containerRef={viewportRef}
+          webviewRef={webviewRef}
+          browserOverlayViewport={browserOverlayViewport}
+          worktreeId={worktreeId}
+        />
+
         <BrowserPageZoomIndicator
           state={browserZoomIndicatorState}
           percent={zoom.browserZoomPercent}
@@ -399,7 +516,12 @@ export function ClientHostedBrowserPagePane({
             httpsRecoveryUrl={toHttpsRecoveryUrl(failedNavigationUrl)}
             onRetry={() => reload.runReloadTrigger('reload')}
             onTryHttps={navigateToUrl}
-            onCopy={(url) => void window.api.ui.writeClipboardText(url)}
+            onCopy={(url) => {
+              void window.api.ui.writeClipboardText(url)
+              setResourceNotice(
+                translate('browser.loadFailure.addressCopied', 'Copied the current page address.')
+              )
+            }}
             onOpenExternal={(url) => void window.api.shell.openUrl(url)}
             externalUrl={getOpenableExternalUrl(failedNavigationUrl)}
             certificateFailure={certificateFailure}
