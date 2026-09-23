@@ -188,6 +188,30 @@ describe('useNativeChatComposerAttachments', () => {
     act(() => probe.root.unmount())
   })
 
+  it('lets a target-owned pending image chip through on a remote runtime target', async () => {
+    runtimeTarget.remote = true
+    const probe = await renderProbe('remote-pty')
+
+    // A paste against a runtime pane saves through the runtime's own clipboard
+    // importer, so the chip it starts is target-owned even though the pane is a
+    // remote target — the gate exists to keep CLIENT-LOCAL paths off it.
+    let ownedId: string | null = null
+    act(() => {
+      ownedId = probe.latest().beginPendingImageAttachment('data:image/png;base64,AA', {
+        targetOwned: true
+      })
+    })
+    expect(ownedId).not.toBeNull()
+    expect(probe.notice()).toBeNull()
+
+    // Without the ownership proof the gate still refuses client-local chips.
+    act(() => {
+      probe.latest().beginPendingImageAttachment('data:image/png;base64,AA')
+    })
+    expect(probe.notice()).toBe('Local attachments are not available for remote sessions.')
+    act(() => probe.root.unmount())
+  })
+
   it('rejects an ownership-validated path when its owner changes before IME flush', async () => {
     let composing = true
     let ownerCurrent = true

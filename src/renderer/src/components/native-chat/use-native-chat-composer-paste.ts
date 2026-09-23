@@ -4,10 +4,10 @@ import { extractIpcErrorMessage } from '@/lib/ipc-error'
 import type { AgentType } from '../../../../shared/agent-status-types'
 import { NATIVE_CHAT_CONTEXT_PASTE_MAX_BYTES } from './native-chat-composer-target'
 import {
-  nativeChatLocalAttachmentUnsupportedNotice,
   nativeChatWorktreeNotReadyNotice,
   type NativeChatAttachmentOwner
 } from './native-chat-attachment-upload'
+import { nativeChatAttachmentOwnerUnchanged } from './native-chat-resolved-path-ownership'
 
 export type UseNativeChatComposerPasteArgs = {
   agent: AgentType
@@ -44,11 +44,13 @@ function clipboardEventImageFile(event: ClipboardEventLike): File | null {
   return item?.getAsFile() ?? null
 }
 
-/** Owners whose attachment path is a file this client can write right now. */
+/** Owners whose attachment path is a file the agent's host can read: local and
+ *  SSH save at attach time, and a runtime owner saves through the runtime's own
+ *  clipboard importer, so every one of these produces a readable path. */
 function ownerAcceptsClipboardImage(
   owner: NativeChatAttachmentOwner
-): owner is Extract<NativeChatAttachmentOwner, { kind: 'local' | 'ssh' }> {
-  return owner.kind === 'local' || owner.kind === 'ssh'
+): owner is Extract<NativeChatAttachmentOwner, { kind: 'local' | 'ssh' | 'runtime' }> {
+  return owner.kind === 'local' || owner.kind === 'ssh' || owner.kind === 'runtime'
 }
 
 function ownerConnectionId(owner: NativeChatAttachmentOwner): string | null {
@@ -63,6 +65,10 @@ function attachmentOwnerStillMatches(
 ): boolean {
   if (original.kind !== current.kind) {
     return false
+  }
+  if (original.kind === 'runtime' && current.kind === 'runtime') {
+    // A path saved on one runtime host is unreadable from another.
+    return original.environmentId === current.environmentId
   }
   if (original.kind !== 'ssh') {
     return true
@@ -110,15 +116,17 @@ export function useNativeChatComposerPaste({
     async (
       owner: NativeChatAttachmentOwner
     ): Promise<{ status: 'saved'; tempPath: string } | { status: 'empty' | 'failed' }> => {
-      if (owner.kind === 'runtime') {
-        setNotice(nativeChatLocalAttachmentUnsupportedNotice())
-        return { status: 'failed' }
-      }
       try {
-        // SSH panes save the image on the remote host (SFTP) so the attached
-        // path is readable by the remote agent, matching terminal image paste.
+        // SSH panes save the image on the remote host (SFTP); runtime-owned
+        // panes save through the runtime's clipboard importer. Either way the
+        // attached path is readable by the agent's own host, matching terminal
+        // image paste.
         const tempPath = await window.api.ui.saveClipboardImageAsTempFile(
-          owner.kind === 'ssh' ? { connectionId: owner.connectionId } : undefined
+          owner.kind === 'ssh'
+            ? { connectionId: owner.connectionId }
+            : owner.kind === 'runtime'
+              ? { runtimeEnvironmentId: owner.environmentId }
+              : undefined
         )
         return tempPath ? { status: 'saved', tempPath } : { status: 'empty' }
       } catch (error) {
@@ -156,6 +164,14 @@ export function useNativeChatComposerPaste({
       }
       if (pendingId) {
         resolvePendingImageAttachment(pendingId, path, connectionId)
+      } else if (originalOwner.kind === 'runtime') {
+        // A runtime-saved path lives on that runtime host — target-owned, which
+        // is what the remote gate asks about. The predicate re-verifies the
+        // owner is still the same environment when a delayed batch flushes.
+        attachResolvedPaths([path], connectionId, {
+          targetOwnerIsCurrent: () =>
+            nativeChatAttachmentOwnerUnchanged(originalOwner, resolveAttachmentOwner())
+        })
       } else {
         attachResolvedPaths([path], connectionId)
       }
@@ -199,7 +215,9 @@ export function useNativeChatComposerPaste({
       const previewUrl = ownerAcceptsClipboardImage(owner)
         ? URL.createObjectURL(imageFile)
         : undefined
-      const pendingId = previewUrl ? beginPendingImageAttachment(previewUrl) : null
+      const pendingId = previewUrl
+        ? beginPendingImageAttachment(previewUrl, { targetOwned: owner.kind === 'runtime' })
+        : null
       if (previewUrl && !pendingId) {
         URL.revokeObjectURL(previewUrl)
       }
@@ -245,7 +263,11 @@ export function useNativeChatComposerPaste({
       const savePromise = saveClipboardImageForOwner(owner)
       const thumbnail = await thumbnailPromise
       const pendingId =
-        thumbnail && !disabledRef.current ? beginPendingImageAttachment(thumbnail.dataUrl) : null
+        thumbnail && !disabledRef.current
+          ? beginPendingImageAttachment(thumbnail.dataUrl, {
+              targetOwned: owner.kind === 'runtime'
+            })
+          : null
       const saved = await savePromise
       if (disabledRef.current || saved.status === 'failed') {
         if (pendingId) {

@@ -170,6 +170,13 @@ const sshOwner: NativeChatAttachmentOwner = {
   expectedSshConnectionGeneration: 4
 }
 
+const runtimeOwner: NativeChatAttachmentOwner = {
+  kind: 'runtime',
+  environmentId: 'env-1',
+  worktreeId: 'wt-1',
+  worktreePath: '/remote/wt'
+}
+
 afterEach(() => {
   root?.unmount()
   root = null
@@ -177,23 +184,61 @@ afterEach(() => {
 })
 
 describe('useNativeChatComposerPaste', () => {
-  it('does not save a clipboard image locally for a remote runtime', async () => {
-    const setNotice = vi.fn()
+  it('saves on the runtime host and settles the chip on the returned runtime path', async () => {
+    mocks.saveClipboardImageAsTempFile.mockResolvedValue('/tmp/orca-paste-1.png')
     const store = createChipStore()
     const probe = await renderProbe({
-      resolveAttachmentOwner: () => ({ kind: 'runtime' }),
+      resolveAttachmentOwner: () => runtimeOwner,
+      store,
+      attachResolvedPaths: vi.fn()
+    })
+
+    await act(async () => {
+      probe.latest().handlePaste(imagePasteEvent())
+    })
+
+    // #16839: the runtime's own clipboard importer writes the temp file on the
+    // server — a client-local path would name a file the agent cannot read.
+    expect(mocks.saveClipboardImageAsTempFile).toHaveBeenCalledWith({
+      runtimeEnvironmentId: 'env-1'
+    })
+    expect(store.chips[0]?.path).toBe('/tmp/orca-paste-1.png')
+  })
+
+  it('surfaces a failed runtime image save through the composer notice', async () => {
+    mocks.saveClipboardImageAsTempFile.mockRejectedValue(new Error('runtime upload failed'))
+    const store = createChipStore()
+    const setNotice = vi.fn()
+    const probe = await renderProbe({
+      resolveAttachmentOwner: () => runtimeOwner,
       store,
       setNotice
     })
 
+    await act(async () => {
+      probe.latest().handlePaste(imagePasteEvent())
+    })
+
+    expect(setNotice).toHaveBeenCalledWith('runtime upload failed')
+    expect(store.chips).toHaveLength(0)
+  })
+
+  it('marks a no-placeholder runtime attach as target-owned', async () => {
+    mocks.saveClipboardImageAsTempFile.mockResolvedValue('/tmp/orca-paste-2.png')
+    mocks.readClipboardImageThumbnail.mockResolvedValue(null)
+    const attachResolvedPaths = vi.fn()
+    const probe = await renderProbe({
+      resolveAttachmentOwner: () => runtimeOwner,
+      attachResolvedPaths
+    })
+
     await act(async () => probe.latest().pasteFromClipboard())
 
-    expect(setNotice).toHaveBeenCalledWith(
-      'Local attachments are not available for remote sessions.'
-    )
-    expect(mocks.saveClipboardImageAsTempFile).not.toHaveBeenCalled()
-    expect(mocks.readClipboardImageThumbnail).not.toHaveBeenCalled()
-    expect(store.chips).toHaveLength(0)
+    // The saved path lives on the runtime host, so the remote-target gate has to
+    // see it as owned — with a live re-check for an owner that moved mid-paste.
+    expect(attachResolvedPaths).toHaveBeenCalledWith(['/tmp/orca-paste-2.png'], null, {
+      targetOwnerIsCurrent: expect.any(Function)
+    })
   })
 
   it('surfaces a failed SSH image save through the composer notice', async () => {
