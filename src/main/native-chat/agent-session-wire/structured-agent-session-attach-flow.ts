@@ -1,12 +1,9 @@
 import { settlePostAcquisitionAttachFailure } from './structured-agent-session-attach-failure'
-import { rewindRefusal } from './structured-rewind-refusal'
 import {
-  AgentSessionRewindRefusal,
   AgentSessionAcquisitionExitUnprovenError,
   AgentSessionAcquisitionRootExitObservedError,
   AgentSessionAcquisitionRefusal,
   isAgentSessionPreSpawnError,
-  type StructuredAgentSessionAcquireInput,
   type StructuredAgentSessionAdapter
 } from './structured-agent-session-adapter'
 // The host supplies owner authority; this flow reserves, proves, and publishes the session.
@@ -45,7 +42,6 @@ import {
 import type { ProviderHistoryWindow } from '../agent-session-journal/journal-submission-reconciler'
 
 export type AttachFlowInput = {
-  rewind?: StructuredAgentSessionAcquireInput['rewind']
   store: AgentSessionRecordStore
   adapter: StructuredAgentSessionAdapter
   journalRoot: string
@@ -214,9 +210,6 @@ export async function performAttach(
         )
       }
     }
-    if (error instanceof AgentSessionRewindRefusal) {
-      return rewindRefusal(error.rewindReason)
-    }
     if (error instanceof AgentSessionAcquisitionRefusal) {
       return { ok: false, refusal: { code: error.code, message: error.message } }
     }
@@ -261,7 +254,8 @@ export async function performAttach(
       sessionId,
       fence,
       page: readAgentSessionHydrationPage(attached.journal, fence),
-      unconfirmedClientMessageIds: attached.unconfirmedClientMessageIds
+      unconfirmedClientMessageIds: attached.unconfirmedClientMessageIds,
+      ...(record.surfaceTabId ? { tabId: record.surfaceTabId } : {})
     }
   }
 }

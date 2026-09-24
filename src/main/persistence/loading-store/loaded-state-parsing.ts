@@ -17,6 +17,7 @@ import {
   sshPtyOwnerLeaseSecretSlot
 } from '../../protected-secret-persistence'
 import {
+  isLegacyOpenCodeGoApiKey,
   isLegacyOpenCodeSessionCookie,
   isLegacySshPtyOwnerLease
 } from '../leasing-ssh-ptys/secret-validation'
@@ -104,6 +105,13 @@ export class LoadedStateParsingOperations {
             PROTECTED_SECRET_SLOT.opencodeSessionCookie,
             parsed.settings.opencodeSessionCookie,
             isLegacyOpenCodeSessionCookie
+          )
+        }
+        if (parsed.settings?.opencodeGoApiKey) {
+          parsed.settings.opencodeGoApiKey = this.runtime.protectedSecrets.decrypt(
+            PROTECTED_SECRET_SLOT.opencodeGoApiKey,
+            parsed.settings.opencodeGoApiKey,
+            isLegacyOpenCodeGoApiKey
           )
         }
         if (parsed.settings?.httpProxyUrl) {
