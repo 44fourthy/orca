@@ -53,6 +53,25 @@ export function installClientHostedPaneApi(overrides?: {
         onContextMenuDismissed: inert,
         openDevTools: vi.fn(async () => true),
         proceedCertificate: vi.fn(async () => ({ ok: true })),
+        setAnnotationViewportBridge: vi.fn(async () => true),
+        // The element picker: inert here so a suite only wires the calls it drives.
+        setGrabMode: vi.fn(async () => ({ ok: false as const, reason: 'not-ready' as const })),
+        awaitGrabSelection: vi.fn(async () => ({
+          opId: '',
+          kind: 'cancelled' as const,
+          reason: 'user' as const
+        })),
+        cancelGrab: vi.fn(async () => true),
+        captureSelectionScreenshot: vi.fn(async () => ({
+          ok: false as const,
+          reason: 'No screenshot'
+        })),
+        extractHoverPayload: vi.fn(async () => ({
+          ok: false as const,
+          reason: 'No element hovered'
+        })),
+        onGrabModeToggle: inert,
+        onGrabActionShortcut: inert,
         publishClientPageMetadata: vi.fn(async () => ({ status: 'published', accepted: true })),
         ...overrides?.browser
       },

@@ -7,7 +7,10 @@ import {
   nativeChatWorktreeNotReadyNotice,
   type NativeChatAttachmentOwner
 } from './native-chat-attachment-upload'
-import { nativeChatAttachmentOwnerUnchanged } from './native-chat-resolved-path-ownership'
+import {
+  nativeChatAttachmentOwnerUnchanged,
+  type NativeChatResolvedPathOptions
+} from './native-chat-resolved-path-ownership'
 
 export type UseNativeChatComposerPasteArgs = {
   agent: AgentType
@@ -18,8 +21,15 @@ export type UseNativeChatComposerPasteArgs = {
   /** Resolved at paste time: SSH panes must save the clipboard image on the
    *  remote host, or the attached path names a file the agent cannot read. */
   resolveAttachmentOwner: () => NativeChatAttachmentOwner
-  attachResolvedPaths: (paths: string[], connectionId?: string | null) => void
-  beginPendingImageAttachment: (previewUrl?: string) => string | null
+  attachResolvedPaths: (
+    paths: string[],
+    connectionId?: string | null,
+    options?: NativeChatResolvedPathOptions
+  ) => void
+  beginPendingImageAttachment: (
+    previewUrl?: string,
+    options?: { targetOwned?: boolean }
+  ) => string | null
   resolvePendingImageAttachment: (id: string, path: string, connectionId?: string | null) => void
   dropPendingImageAttachment: (id: string) => void
   insertTypedText: (text: string) => boolean

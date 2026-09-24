@@ -4,6 +4,7 @@ import {
   getProjectGroupHeaderSectionEndByGroupId,
   getRepoHeaderSectionEndByRepoId
 } from './worktree-header-section-boundaries'
+import { GROUP_HEADER_ROW_HEIGHT } from './worktree-list/viewport/virtual-rows'
 import type { RenderRow } from './worktree-list/listing/render-row'
 
 const repoHeader = (id: string): RenderRow =>
@@ -20,10 +21,14 @@ const groupHeader = (id: string): RenderRow =>
   }) as RenderRow
 const item = { type: 'item' } as RenderRow
 
-// Estimated starts: first header 28, later headers 32, items 116.
+// Estimated starts: a first header uses GROUP_HEADER_ROW_HEIGHT, later headers
+// add the secondary-group top margin, items use the 116 fallback estimate.
+const SECONDARY_HEADER_MARGIN = 4
+const ITEM_ROW_ESTIMATE = 116
 const rows = [repoHeader('a'), item, repoHeader('b'), item, repoHeader('c'), item]
-const startOfB = 28 + 116
-const startOfC = startOfB + 32 + 116
+const startOfB = GROUP_HEADER_ROW_HEIGHT + ITEM_ROW_ESTIMATE
+const startOfC =
+  startOfB + (GROUP_HEADER_ROW_HEIGHT + SECONDARY_HEADER_MARGIN) + ITEM_ROW_ESTIMATE
 
 describe('getRepoHeaderSectionEndByRepoId', () => {
   it('ends a section at the successor from the header’s own bucket', () => {

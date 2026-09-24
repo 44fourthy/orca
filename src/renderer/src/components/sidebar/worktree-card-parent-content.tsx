@@ -66,7 +66,7 @@ export function WorktreeCardParentContent({
 
   const identityContent = (
     <div
-      className="group/worktree-card flex w-full min-w-0 flex-col gap-1.5"
+      className="group/worktree-card flex w-full min-w-0 flex-col gap-1"
       data-worktree-card-hover-trigger=""
     >
       <WorktreeCardHeader card={card} presentation={presentation} />
@@ -133,7 +133,7 @@ export function WorktreeCardParentContent({
         <div
           className={cn(
             'flex shrink-0 justify-center',
-            newCardStyle ? 'mr-1 w-5 items-center' : 'items-start pt-[2px]',
+            newCardStyle ? 'mr-0.5 w-4 items-center' : 'items-start pt-[2px]',
             affiliateListMode && 'px-1'
           )}
           data-worktree-card-status-slot=""
@@ -156,7 +156,7 @@ export function WorktreeCardParentContent({
       {/* Content area */}
       <div
         className={cn(
-          'flex min-w-0 flex-1 flex-col gap-1.5',
+          'flex min-w-0 flex-1 flex-col gap-1',
           // Why: inline agent rows intentionally outdent into the card gutter; inner elements handle truncation.
           showInlineAgentList || (!newCardStyle && lineageChildren)
             ? 'overflow-visible'

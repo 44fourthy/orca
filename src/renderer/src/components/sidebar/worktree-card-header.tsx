@@ -172,7 +172,7 @@ export function WorktreeCardHeader({
           disabled={isDeleting || affiliateListMode}
           showUnreadEmphasis={showUnreadEmphasis}
           dimReadTitle={newCardStyle}
-          className="text-[13px] leading-5"
+          className="text-[12px] leading-4"
           editingClassName="flex-1"
           titleWrapper={titleWrapper}
           onEditingChange={affiliateListMode ? undefined : setTitleRenaming}

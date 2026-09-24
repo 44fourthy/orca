@@ -195,7 +195,7 @@ export function renderWorktreeSectionHeaderRow(args: {
           ? cn(
               'sticky z-20 bg-worktree-sidebar',
               // Why: when a host card is pinned, the group tier pins flush beneath it, not at the viewport top.
-              args.hasStickyHost ? 'top-[35px]' : '-top-px'
+              args.hasStickyHost ? 'top-[31px]' : '-top-px'
             )
           : 'absolute top-0'
       )}
@@ -232,7 +232,7 @@ export function renderWorktreeSectionHeaderRow(args: {
         className={cn(
           // Why: no row-level grab — only the title surface below shows the hand;
           // actions use cursor-pointer so … / + never look reorderable.
-          'group relative flex h-7 w-full items-center gap-1.5 pr-2 text-left transition-all',
+          'group relative flex h-6 w-full items-center gap-1 pr-1.5 text-left transition-all',
           !(isDraggableRepoHeader || isDraggableProjectGroupHeader) && 'cursor-pointer',
           ctx.highlightedRevealRowKey === row.key &&
             'rounded-md bg-worktree-sidebar-accent ring-1 ring-worktree-sidebar-ring/50',
@@ -303,7 +303,7 @@ export function renderWorktreeSectionHeaderRow(args: {
           data-repo-header-drag-handle={isDraggableRepoHeader ? '' : undefined}
           data-project-group-header-drag-handle={isDraggableProjectGroupHeader ? '' : undefined}
           className={cn(
-            'flex min-w-0 flex-1 items-center gap-1.5 self-stretch',
+            'flex min-w-0 flex-1 items-center gap-1 self-stretch',
             (isDraggableRepoHeader || isDraggableProjectGroupHeader) &&
               'cursor-grab active:cursor-grabbing'
           )}
@@ -311,7 +311,7 @@ export function renderWorktreeSectionHeaderRow(args: {
           {row.icon ? (
             <div
               className={cn(
-                'flex size-4 shrink-0 items-center justify-center rounded-[4px]',
+                'flex size-3.5 shrink-0 items-center justify-center rounded-[4px]',
                 repoHeaderColor ? 'text-muted-foreground' : row.tone
               )}
             >
@@ -319,18 +319,18 @@ export function renderWorktreeSectionHeaderRow(args: {
                 <RepoIconGlyph
                   repoIcon={row.repo.repoIcon}
                   color={repoHeaderColor}
-                  className="size-4"
-                  iconClassName="size-3.5"
+                  className="size-3.5"
+                  iconClassName="size-3"
                 />
               ) : (
-                <row.icon className="size-3" />
+                <row.icon className="size-2.5" />
               )}
             </div>
           ) : null}
 
           <div className="min-w-0 flex-1">
             <div className="flex min-w-0 items-center gap-1.5">
-              <div className="min-w-0 truncate text-[13px] font-semibold leading-none">
+              <div className="min-w-0 truncate text-[12px] font-semibold leading-none">
                 {row.label}
               </div>
               <RepoForkIndicator upstream={row.repo?.upstream} />
@@ -354,7 +354,7 @@ export function renderWorktreeSectionHeaderRow(args: {
               }}
             >
               <ChevronDown
-                className={cn('size-3.5 transition-transform', isHeaderCollapsed && '-rotate-90')}
+                className={cn('size-3 transition-transform', isHeaderCollapsed && '-rotate-90')}
               />
             </div>
           ) : null}

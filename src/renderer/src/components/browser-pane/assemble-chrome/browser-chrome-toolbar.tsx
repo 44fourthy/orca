@@ -87,80 +87,7 @@ export function BrowserChromeToolbar({
       {importControl}
 
       {elementTools ? (
-        <>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="inline-flex">
-                <Button
-                  size="icon"
-                  variant={elementTools.activeIntent === 'copy' ? 'default' : 'ghost'}
-                  className={cn(
-                    'h-8 w-8',
-                    elementTools.activeIntent === 'copy' &&
-                      'bg-foreground/80 text-background hover:bg-foreground/90'
-                  )}
-                  onClick={() => elementTools.onStartIntent('copy')}
-                  disabled={elementTools.disabled}
-                  aria-label={translate(
-                    'auto.components.browser.pane.BrowserPane.fdfc7fe0ef',
-                    'Grab page element'
-                  )}
-                  {...(showTourAnchors
-                    ? { 'data-contextual-tour-target': 'browser-grab-control' }
-                    : {})}
-                >
-                  <Crosshair className="size-4" />
-                </Button>
-              </span>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" sideOffset={4}>
-              {translate(
-                'auto.components.browser.pane.BrowserPane.acbe79fd01',
-                'Grab page element ({{value0}})',
-                { value0: elementTools.grabShortcutLabel }
-              )}
-            </TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              {/* Why: disabled <button> drops hover events, so wrap in a span so the tooltip trigger still fires. */}
-              <span className="inline-flex">
-                <Button
-                  size="icon"
-                  variant={elementTools.activeIntent === 'annotate' ? 'default' : 'ghost'}
-                  className={cn(
-                    'relative h-8 w-8',
-                    elementTools.activeIntent === 'annotate' &&
-                      'bg-foreground/80 text-background hover:bg-foreground/90'
-                  )}
-                  onClick={() => elementTools.onStartIntent('annotate')}
-                  disabled={elementTools.disabled}
-                  aria-label={translate(
-                    'auto.components.browser.pane.BrowserPane.fc9be38f6f',
-                    'Annotate page element'
-                  )}
-                  {...(showTourAnchors
-                    ? { 'data-contextual-tour-target': 'browser-annotation-control' }
-                    : {})}
-                >
-                  <MessageSquarePlus className="size-4" />
-                  {elementTools.annotationCount > 0 ? (
-                    <span className="absolute -top-1 -right-1 flex min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] leading-4 text-primary-foreground">
-                      {elementTools.annotationCount}
-                    </span>
-                  ) : null}
-                </Button>
-              </span>
-            </TooltipTrigger>
-            <TooltipContent side="bottom" sideOffset={4}>
-              {translate(
-                'auto.components.browser.pane.BrowserPane.fc9be38f6f',
-                'Annotate page element'
-              )}
-            </TooltipContent>
-          </Tooltip>
-        </>
+        <BrowserElementToolButtons elementTools={elementTools} showTourAnchors={showTourAnchors} />
       ) : null}
 
       <MarkupDrawButton
@@ -202,5 +129,88 @@ export function BrowserChromeToolbar({
 
       {overflowMenu}
     </BrowserNavigationControlRow>
+  )
+}
+
+/** The grab/annotate pair from the toolbar's tool cluster, for surfaces that build their own row. */
+export function BrowserElementToolButtons({
+  elementTools,
+  showTourAnchors = false
+}: {
+  elementTools: BrowserChromeElementTools
+  showTourAnchors?: boolean
+}): React.JSX.Element {
+  return (
+    <>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span className="inline-flex">
+            <Button
+              size="icon"
+              variant={elementTools.activeIntent === 'copy' ? 'default' : 'ghost'}
+              className={cn(
+                'h-8 w-8',
+                elementTools.activeIntent === 'copy' &&
+                  'bg-foreground/80 text-background hover:bg-foreground/90'
+              )}
+              onClick={() => elementTools.onStartIntent('copy')}
+              disabled={elementTools.disabled}
+              aria-label={translate(
+                'auto.components.browser.pane.BrowserPane.fdfc7fe0ef',
+                'Grab page element'
+              )}
+              {...(showTourAnchors
+                ? { 'data-contextual-tour-target': 'browser-grab-control' }
+                : {})}
+            >
+              <Crosshair className="size-4" />
+            </Button>
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" sideOffset={4}>
+          {translate(
+            'auto.components.browser.pane.BrowserPane.acbe79fd01',
+            'Grab page element ({{value0}})',
+            { value0: elementTools.grabShortcutLabel }
+          )}
+        </TooltipContent>
+      </Tooltip>
+
+      <Tooltip>
+        <TooltipTrigger asChild>
+          {/* Why: disabled <button> drops hover events, so wrap in a span so the tooltip trigger still fires. */}
+          <span className="inline-flex">
+            <Button
+              size="icon"
+              variant={elementTools.activeIntent === 'annotate' ? 'default' : 'ghost'}
+              className={cn(
+                'relative h-8 w-8',
+                elementTools.activeIntent === 'annotate' &&
+                  'bg-foreground/80 text-background hover:bg-foreground/90'
+              )}
+              onClick={() => elementTools.onStartIntent('annotate')}
+              disabled={elementTools.disabled}
+              aria-label={translate(
+                'auto.components.browser.pane.BrowserPane.fc9be38f6f',
+                'Annotate page element'
+              )}
+              {...(showTourAnchors
+                ? { 'data-contextual-tour-target': 'browser-annotation-control' }
+                : {})}
+            >
+              <MessageSquarePlus className="size-4" />
+              {elementTools.annotationCount > 0 ? (
+                <span className="absolute -top-1 -right-1 flex min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] leading-4 text-primary-foreground">
+                  {elementTools.annotationCount}
+                </span>
+              ) : null}
+            </Button>
+          </span>
+        </TooltipTrigger>
+        <TooltipContent side="bottom" sideOffset={4}>
+          {translate('auto.components.browser.pane.BrowserPane.fc9be38f6f', 'Annotate page element')}
+        </TooltipContent>
+      </Tooltip>
+    </>
   )
 }
