@@ -459,8 +459,16 @@ const MERMAID_PACKAGE = 'node_modules/mermaid/'
  *
  *   modules        4221 -> 4219   (-2)
  *   local modules  1035 -> 1033   (-2)
+ *
+ * Main's tip, #22616 (`f0b3f44f10`), then added `src/shared/agent-session-launch-args.ts` and
+ * `src/shared/agent-session-surface-tab-id.ts`, which the route reaches through the agent-session
+ * wire modules. Two local modules; src/shared-only, so its own run never exercised this suite. Measured
+ * on main at that commit and on the fork line, which is identical here.
+ *
+ *   modules        4219 -> 4221   (+2)
+ *   local modules  1033 -> 1035   (+2)
  */
-const SESSION_ROUTE_MODULES = 4219
+const SESSION_ROUTE_MODULES = 4221
 
 /** What the page enters this route through once the route is a switch with a `.web.tsx` sibling. */
 const ROUTE_ENTRY = [
