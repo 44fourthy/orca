@@ -101,7 +101,7 @@ export function HostSectionHeader({
         data-host-header-drag-id={row.hostId}
         aria-expanded={!row.collapsed}
         className={cn(
-          'group/host-header flex h-8 w-full cursor-pointer items-center gap-2 rounded-md border px-2 text-left transition-all',
+          'group/host-header flex h-7 w-full cursor-pointer items-center gap-1.5 rounded-md border px-1.5 text-left transition-all',
           onDragPointerDown && 'cursor-grab active:cursor-grabbing',
           isBlocked
             ? 'border-destructive/40 bg-destructive/10'
@@ -120,9 +120,9 @@ export function HostSectionHeader({
         }}
       >
         {isDisconnected ? (
-          <ServerOff className="size-3.5 shrink-0 text-muted-foreground/80" />
+          <ServerOff className="size-3 shrink-0 text-muted-foreground/80" />
         ) : (
-          <Server className="size-3.5 shrink-0 text-muted-foreground" />
+          <Server className="size-3 shrink-0 text-muted-foreground" />
         )}
         <HostHeaderHealthIcon health={row.health} />
         {/* Why: badge hugs the label (like repo headers) instead of floating by the hover controls. */}
@@ -149,7 +149,7 @@ export function HostSectionHeader({
         </div>
         <div className="flex size-4 shrink-0 items-center justify-center text-muted-foreground/60 can-hover:opacity-0 transition-opacity group-hover/host-header:opacity-100">
           <ChevronDown
-            className={cn('size-3.5 transition-transform', row.collapsed && '-rotate-90')}
+            className={cn('size-3 transition-transform', row.collapsed && '-rotate-90')}
           />
         </div>
         <span data-host-header-action="">

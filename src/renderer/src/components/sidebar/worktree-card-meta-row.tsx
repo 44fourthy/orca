@@ -45,10 +45,10 @@ export function WorktreeCardMetaRow({
   } = presentation
 
   return (
-    <div className="flex items-center gap-1.5 min-w-0" data-worktree-card-meta-row="">
-      <div className="flex min-w-0 flex-1 items-center gap-1.5 overflow-hidden">
+    <div className="flex items-center gap-1 min-w-0" data-worktree-card-meta-row="">
+      <div className="flex min-w-0 flex-1 items-center gap-1 overflow-hidden">
         {showRepoBadgeInMetaRow && repo && (
-          <div className="flex items-center gap-1.5 shrink-0 px-1.5 py-0.5 rounded-[4px] bg-accent border border-border dark:bg-accent/50 dark:border-border/60">
+          <div className="flex items-center gap-1 shrink-0 px-1 py-0.5 rounded-[4px] bg-accent border border-border dark:bg-accent/50 dark:border-border/60">
             <RepoBadgeMark color={repo.badgeColor} />
             <span className="text-[10px] font-semibold text-foreground truncate max-w-[6rem] leading-none lowercase">
               {repo.displayName}

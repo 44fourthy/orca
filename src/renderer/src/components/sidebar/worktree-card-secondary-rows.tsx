@@ -74,7 +74,7 @@ export function WorktreeCardSecondaryRows({
 
       {showLineageChildChip && (
         <div
-          className={cn('relative mt-1 flex min-w-0 justify-start', !newCardStyle && '-ml-1')}
+          className={cn('relative mt-0.5 flex min-w-0 justify-start', !newCardStyle && '-ml-1')}
           style={{
             color: 'color-mix(in srgb, var(--muted-foreground) 42%, var(--worktree-sidebar))'
           }}
@@ -113,7 +113,7 @@ export function WorktreeCardSecondaryRows({
       )}
 
       {!newCardStyle && lineageChildren && (
-        <div className="-ml-[1.125rem] mt-1.5 w-[calc(100%+1.125rem)] space-y-1">
+        <div className="-ml-[1.125rem] mt-1 w-[calc(100%+1.125rem)] space-y-0.5">
           {lineageChildren}
         </div>
       )}

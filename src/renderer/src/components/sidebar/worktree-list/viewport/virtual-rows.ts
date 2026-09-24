@@ -4,9 +4,9 @@ import { PINNED_GROUP_KEY, getWorktreeLineageGroupKey } from '../grouping/group-
 import { getRenderRowKey } from '../listing/render-row'
 import type { RenderRow } from '../listing/render-row'
 
-export const GROUP_HEADER_ROW_HEIGHT = 28
-export const HOST_HEADER_ROW_HEIGHT = 32
-export const WORKTREE_SIDEBAR_VIRTUAL_ROW_GAP = 6
+export const GROUP_HEADER_ROW_HEIGHT = 24
+export const HOST_HEADER_ROW_HEIGHT = 28
+export const WORKTREE_SIDEBAR_VIRTUAL_ROW_GAP = 4
 const SECONDARY_GROUP_HEADER_TOP_MARGIN = 4
 const IMPORTED_WORKTREES_LINE_ROW_HEIGHT = 36
 const PENDING_CREATION_ROW_HEIGHT = 56
@@ -159,10 +159,10 @@ export function getStickyHeaderIndexes(rows: readonly RenderRow[]): number[] {
   return indexes
 }
 
-// Why: the pinned host card is h-8 (32px) inside a pt-1 (4px) wrapper; the
+// Why: the pinned host card is h-7 (28px) inside a pt-1 (4px) wrapper; the
 // group tier pins one pixel up to sit flush beneath it. Keep in sync with
 // HostSectionHeader's layout.
-export const HOST_STICKY_PINNED_HEIGHT = 36
+export const HOST_STICKY_PINNED_HEIGHT = 32
 
 export type ActiveStickyIndexes = {
   /** Pinned host card (tier 1), or null outside host sections. */

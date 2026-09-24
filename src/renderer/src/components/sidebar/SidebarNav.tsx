@@ -87,7 +87,7 @@ const SidebarNav = React.memo(function SidebarNav() {
 
   return (
     <div
-      className="flex flex-col gap-0.5 px-2 pt-2 pb-1"
+      className="flex flex-col gap-0 px-2 pt-1.5 pb-1"
       data-contextual-tour-target="sidebar-navigation"
     >
       <button
@@ -97,7 +97,7 @@ const SidebarNav = React.memo(function SidebarNav() {
           'auto.components.sidebar.SidebarNav.0c3395fd32',
           'Search worktrees and browser tabs'
         )}
-        className="group flex w-full items-center gap-2 rounded-md bg-worktree-sidebar-foreground/5 px-2 py-1.5 text-left text-[13px] font-medium tracking-tight text-worktree-sidebar-foreground/60 transition-colors hover:bg-worktree-sidebar-foreground/8"
+        className="group flex w-full items-center gap-2 rounded-md bg-worktree-sidebar-foreground/5 px-1.5 py-1 text-left text-[12px] font-medium tracking-tight text-worktree-sidebar-foreground/60 transition-colors hover:bg-worktree-sidebar-foreground/8"
       >
         <Search
           className="size-4 shrink-0 text-worktree-sidebar-foreground/30"
@@ -129,7 +129,7 @@ const SidebarNav = React.memo(function SidebarNav() {
               onClick={openArtifactsPage}
               aria-current={artifactsActive ? 'page' : undefined}
               className={cn(
-                'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] font-medium tracking-tight transition-colors',
+                'flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left text-[12px] font-medium tracking-tight transition-colors',
                 artifactsActive
                   ? 'bg-worktree-sidebar-accent text-worktree-sidebar-accent-foreground'
                   : 'text-worktree-sidebar-foreground/60 hover:bg-worktree-sidebar-foreground/8'
@@ -158,7 +158,7 @@ const SidebarNav = React.memo(function SidebarNav() {
               onClick={openSkillsPage}
               aria-current={skillsActive ? 'page' : undefined}
               className={cn(
-                'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] font-medium tracking-tight transition-colors',
+                'flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left text-[12px] font-medium tracking-tight transition-colors',
                 skillsActive
                   ? 'bg-worktree-sidebar-accent text-worktree-sidebar-accent-foreground'
                   : 'text-worktree-sidebar-foreground/60 hover:bg-worktree-sidebar-foreground/8'
@@ -187,7 +187,7 @@ const SidebarNav = React.memo(function SidebarNav() {
               onClick={openAutomationsPage}
               aria-current={automationsActive ? 'page' : undefined}
               className={cn(
-                'flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[13px] font-medium tracking-tight transition-colors',
+                'flex w-full items-center gap-2 rounded-md px-1.5 py-1 text-left text-[12px] font-medium tracking-tight transition-colors',
                 automationsActive
                   ? 'bg-worktree-sidebar-accent text-worktree-sidebar-accent-foreground'
                   : 'text-worktree-sidebar-foreground/60 hover:bg-worktree-sidebar-foreground/8'

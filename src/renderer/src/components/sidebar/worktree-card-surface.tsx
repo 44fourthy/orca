@@ -48,10 +48,10 @@ export function WorktreeCardSurface({ card }: { card: WorktreeCardController }):
   const cardBody = (
     <div
       className={cn(
-        'relative flex cursor-pointer flex-col pr-1.5 transition-[background-color,border-color,opacity,box-shadow] duration-200 outline-none select-none',
-        titleOnlyCard ? 'py-2' : 'pt-1.25 pb-1.5',
+        'relative flex cursor-pointer flex-col pr-1 transition-[background-color,border-color,opacity,box-shadow] duration-200 outline-none select-none',
+        titleOnlyCard ? 'py-1.5' : 'pt-0.5 pb-1',
         flushSurface ? 'ml-1 w-[calc(100%-0.25rem)]' : 'ml-1',
-        'rounded-lg',
+        'rounded-md',
         // Why: the live data attribute updates before React state during navigation,
         // so it must own the complete active style without stale utility classes.
         isLineageDropTarget
@@ -90,7 +90,7 @@ export function WorktreeCardSurface({ card }: { card: WorktreeCardController }):
       style={cardStyle}
     >
       {isDeleting && (
-        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-lg bg-background/50 backdrop-blur-[1px]">
+        <div className="absolute inset-0 z-10 flex items-center justify-center rounded-md bg-background/50 backdrop-blur-[1px]">
           <div className="inline-flex items-center gap-1.5 rounded-full bg-background px-3 py-1 text-[11px] font-medium text-foreground shadow-sm border border-border/50">
             {!isQueuedForDeletion ? (
               <LoaderCircle className="size-3.5 animate-spin text-muted-foreground" />
@@ -111,7 +111,7 @@ export function WorktreeCardSurface({ card }: { card: WorktreeCardController }):
 
       {newCardStyle && lineageChildren ? (
         <div
-          className="mt-1.5 space-y-1"
+          className="mt-1 space-y-0.5"
           data-worktree-lineage-children=""
           style={lineageChildrenStyle}
         >
