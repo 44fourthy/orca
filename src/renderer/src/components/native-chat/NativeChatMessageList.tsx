@@ -149,9 +149,18 @@ export function NativeChatMessageList({
   }, [journalItems, projectMessages, session.messages])
   const taskListPredecessors = useMemo(() => nativeChatTaskListPredecessors(messages), [messages])
   const taskListState = useMemo(() => nativeChatTaskListState(messages), [messages])
+  // Answer-only mode hides the very rows the tail heuristic below looks for, so
+  // its dots would vanish exactly while the agent is busiest and nothing else is
+  // on screen — leaving the sidebar as the only way to tell a turn is alive.
+  // In that mode a working turn is itself the signal.
+  const hideToolActivity = useAppStore(
+    (state) => state.settings?.nativeChatHideToolActivity === true
+  )
   const showTypingIndicator = showTurnStatus
     ? isWorking
-    : shouldShowNativeChatTypingIndicator({ messages, isWorking })
+    : hideToolActivity
+      ? isWorking
+      : shouldShowNativeChatTypingIndicator({ messages, isWorking })
   const latestUserIndex = messages.findLastIndex((message) => message.role === 'user')
   const currentTurnKey =
     latestUserIndex === -1 ? undefined : (messages[latestUserIndex]?.id ?? undefined)
@@ -188,9 +197,6 @@ export function NativeChatMessageList({
     thinking
   })
   const lifecycleWorking = session.transcriptLifecycle?.state === 'working'
-  const hideToolActivity = useAppStore(
-    (state) => state.settings?.nativeChatHideToolActivity === true
-  )
   const slots = useMemo(
     () =>
       buildNativeChatTranscriptSlots({

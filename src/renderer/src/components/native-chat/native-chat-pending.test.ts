@@ -3,6 +3,7 @@ import type { NativeChatMessage } from '../../../../shared/native-chat-types'
 import {
   appendPendingSendCache,
   clearPendingSendCacheForTests,
+  interleavePendingSends,
   isLaunchPromptMessageId,
   isPendingMessageId,
   launchPromptAsMessage,
@@ -806,5 +807,55 @@ describe('scope-cache key counts stay bounded (memory-leak regression)', () => {
     expect(readPendingSendCache({ paneKey: `tab-${CAP + 4}:leaf`, agent: 'claude' })).toHaveLength(
       1
     )
+  })
+})
+
+describe('interleavePendingSends', () => {
+  const boundarySend = (
+    id: string,
+    text: string,
+    afterMessageId: string | null
+  ): NativeChatPendingSend => ({ ...pendingOf(id, text), afterMessageId })
+
+  it('keeps the transcript in order when nothing is pending', () => {
+    const messages = [userMessage('m1', 'first'), assistantMessage('m2', 'reply')]
+    expect(interleavePendingSends([], messages, [])).toEqual(messages)
+  })
+
+  it('sits the echo after its send boundary so later rows render below it', () => {
+    const messages = [
+      userMessage('m1', 'first'),
+      assistantMessage('m2', 'working on it'),
+      // Arrived after the send: belongs below the echo, not above it.
+      assistantMessage('m3', 'still working')
+    ]
+    const pending = [boundarySend('p1', 'next task', 'm2')]
+    const echoes = pendingSendsAsMessages(pending, messages)
+    const ordered = interleavePendingSends(pending, messages, echoes)
+    expect(ordered.map((message) => message.id)).toEqual(['m1', 'm2', 'pending:p1', 'm3'])
+  })
+
+  it('places an echo at the tail when its boundary is the last message', () => {
+    const messages = [userMessage('m1', 'first'), assistantMessage('m2', 'done')]
+    const pending = [boundarySend('p1', 'next task', 'm2')]
+    const echoes = pendingSendsAsMessages(pending, messages)
+    const ordered = interleavePendingSends(pending, messages, echoes)
+    expect(ordered.map((message) => message.id)).toEqual(['m1', 'm2', 'pending:p1'])
+  })
+
+  it('keeps an echo at the tail when its boundary is gone, rather than guessing', () => {
+    const messages = [userMessage('m1', 'first')]
+    const pending = [boundarySend('p1', 'next task', 'paged-out')]
+    const echoes = pendingSendsAsMessages(pending, messages)
+    const ordered = interleavePendingSends(pending, messages, echoes)
+    expect(ordered.map((message) => message.id)).toEqual(['m1', 'pending:p1'])
+  })
+
+  it('keeps several echoes after one boundary in send order', () => {
+    const messages = [userMessage('m1', 'first'), assistantMessage('m2', 'working')]
+    const pending = [boundarySend('p1', 'one', 'm2'), boundarySend('p2', 'two', 'm2')]
+    const echoes = pendingSendsAsMessages(pending, messages)
+    const ordered = interleavePendingSends(pending, messages, echoes)
+    expect(ordered.map((message) => message.id)).toEqual(['m1', 'm2', 'pending:p1', 'pending:p2'])
   })
 })

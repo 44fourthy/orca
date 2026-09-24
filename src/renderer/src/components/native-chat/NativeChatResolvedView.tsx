@@ -18,6 +18,7 @@ import {
 } from './native-chat-working-suppression'
 import {
   appendPendingSendCache,
+  interleavePendingSends,
   launchPromptAsMessage,
   pendingSendsAsMessages,
   nextNativeChatPendingSendId,
@@ -284,10 +285,12 @@ export function NativeChatResolvedView({
     return {
       ...sessionAfterCommandBoundaries,
       messages: [
-        ...sessionAfterCommandBoundaries.messages,
+        // Echoes sit at their send boundary, so transcript rows that arrive
+        // after a mid-turn send render below the message instead of above it
+        // (stablyai/orca#22086), and the live preview stays the newest row.
+        ...interleavePendingSends(pending, sessionAfterCommandBoundaries.messages, pendingMessages),
         ...commandMarkersAsMessages(commandMarkers),
-        ...(streamingText ? [nativeChatStreamingMessage(streamingText)] : []),
-        ...pendingMessages
+        ...(streamingText ? [nativeChatStreamingMessage(streamingText)] : [])
       ]
     }
   }, [sessionAfterCommandBoundaries, pending, pendingMessages, commandMarkers, streamingText])
