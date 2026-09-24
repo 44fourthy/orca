@@ -262,56 +262,6 @@ export function pendingSendsAsMessages(
     }))
 }
 
-/**
- * Place each visible echo directly after the transcript message that was last
- * visible when it was sent, so rows that arrive after the send render *below*
- * the echo. Appending echoes at the list tail instead leaves a mid-turn send
- * pinned under the still-streaming previous turn, which reads as the reply
- * arriving above the message that was sent after it (stablyai/orca#22086).
- * An echo whose boundary is gone — a bounded read paged it out, or the send
- * never had one — keeps the tail placement.
- */
-export function interleavePendingSends(
-  pending: NativeChatPendingSend[],
-  messages: readonly NativeChatMessage[],
-  echoes: readonly NativeChatMessage[]
-): NativeChatMessage[] {
-  if (echoes.length === 0) {
-    return [...messages]
-  }
-  const boundaryIdByEchoId = new Map<string, NativeChatPendingSend['afterMessageId']>(
-    pending.map((entry) => [`pending:${entry.id}`, entry.afterMessageId])
-  )
-  const echoesByBoundaryIndex = new Map<number, NativeChatMessage[]>()
-  const tail: NativeChatMessage[] = []
-  for (const echo of echoes) {
-    const boundaryId = boundaryIdByEchoId.get(echo.id)
-    const boundaryIndex =
-      typeof boundaryId === 'string'
-        ? messages.findIndex((message) => message.id === boundaryId)
-        : -1
-    if (boundaryIndex === -1) {
-      tail.push(echo)
-      continue
-    }
-    const placed = echoesByBoundaryIndex.get(boundaryIndex)
-    if (placed) {
-      placed.push(echo)
-    } else {
-      echoesByBoundaryIndex.set(boundaryIndex, [echo])
-    }
-  }
-  const ordered: NativeChatMessage[] = []
-  messages.forEach((message, index) => {
-    ordered.push(message)
-    const placed = echoesByBoundaryIndex.get(index)
-    if (placed) {
-      ordered.push(...placed)
-    }
-  })
-  return [...ordered, ...tail]
-}
-
 /** True when a message id was minted for an optimistic pending send. */
 export function isPendingMessageId(id: string): boolean {
   return id.startsWith('pending:')

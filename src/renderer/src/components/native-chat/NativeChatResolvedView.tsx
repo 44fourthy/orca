@@ -18,7 +18,6 @@ import {
 } from './native-chat-working-suppression'
 import {
   appendPendingSendCache,
-  interleavePendingSends,
   launchPromptAsMessage,
   pendingSendsAsMessages,
   nextNativeChatPendingSendId,
@@ -28,6 +27,7 @@ import {
   writePendingSendCache,
   type NativeChatPendingSend
 } from './native-chat-pending'
+import { interleavePendingSends } from './native-chat-pending-interleave'
 import {
   appendCommandMarkerCache,
   applyCommandMarkerBoundaries,
