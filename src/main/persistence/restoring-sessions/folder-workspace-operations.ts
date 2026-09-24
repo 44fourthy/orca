@@ -227,10 +227,11 @@ export class FolderWorkspacePersistenceOperations {
     if (!repo) {
       return null
     }
-    const normalizedGroupId =
-      groupId && (this.state.projectGroups ?? []).some((group) => group.id === groupId)
-        ? groupId
-        : null
+    // Why: sections are host-agnostic containers — a group created on one host
+    // collects projects from every host, so a group id this store has never
+    // heard of is still valid membership. Local existence used to gate this,
+    // which silently un-grouped (or refused) cross-host moves.
+    const normalizedGroupId = groupId ?? null
     const siblingRepos = this.state.repos.filter((entry) => entry.id !== repoId)
     repo.projectGroupId = normalizedGroupId
     repo.projectGroupOrder =

@@ -7,7 +7,6 @@ import type { SshPtyConsumerRecovery } from '../../../shared/ssh-types'
 import { getDefaultPersistedState } from '../../../shared/constants'
 import { pruneLocalTerminalScrollbackBuffers } from '../../../shared/workspace-session-terminal-buffers'
 import { pruneWorkspaceSessionBrowserHistory } from '../../../shared/workspace-session-browser-history'
-import { clearMissingProjectGroupMemberships } from '../../../shared/project-groups'
 import { migrateWorkspaceSessionTerminalScrollbackSnapshots } from '../../terminal-scrollback-snapshots'
 import {
   isStartupDiagnosticsEnabled,
@@ -209,7 +208,10 @@ export class LoadedStateParsingOperations {
       this.runtime.loadNeedsSave = true
     }
 
-    const repos = clearMissingProjectGroupMemberships(result.repos, result.projectGroups ?? [])
+    // Why: a repo's section may be owned by another host (sections are
+    // host-agnostic containers), so this store must not clear memberships for
+    // group ids it does not own. Deletion is handled by the renderer cascade.
+    const repos = result.repos
     const projectHostSetupCompatibility = mergeProjectHostSetupCompatibilityState(result, repos)
     if (!projectHostSetupCompatibilityStateEqual(result, projectHostSetupCompatibility)) {
       this.runtime.loadNeedsSave = true
