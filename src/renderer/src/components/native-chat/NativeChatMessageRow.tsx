@@ -11,6 +11,7 @@ import type {
   NativeChatToolCallBlock
 } from '../../../../shared/native-chat-types'
 import { deriveNativeChatRowContent } from '../../../../shared/native-chat-row-content'
+import { isPendingMessageId } from './native-chat-pending'
 import { NativeChatToolRun } from './NativeChatToolRun'
 import { NativeChatCodeBlock } from './NativeChatCodeBlock'
 import { NativeChatNoticeRow } from './NativeChatNoticeRow'
@@ -129,11 +130,19 @@ export const MessageRow = memo(function MessageRow({
   }
 
   if (isUser) {
+    // An unconfirmed queued send reads as in-flight: italic and one step
+    // smaller than a landed prompt, so it cannot be mistaken for the record.
+    const queued = isPendingMessageId(message.id)
     return (
       <div ref={rowRef} className="group relative flex flex-col items-end gap-0.5">
         {/* User turns get a distinct muted fill (not the card/canvas color) so
             the prompt reads apart from the assistant's body copy. */}
-        <div className="max-w-[85%] rounded-lg rounded-tr-sm bg-muted px-3.5 py-2.5 text-sm text-foreground">
+        <div
+          className={cn(
+            'max-w-[85%] rounded-lg rounded-tr-sm bg-muted px-3.5 py-2.5 text-sm text-foreground',
+            queued && 'italic'
+          )}
+        >
           {markdown ? (
             <>
               <NativeChatImageAttachments
@@ -144,7 +153,7 @@ export const MessageRow = memo(function MessageRow({
               <CommentMarkdown
                 content={markdown}
                 variant="document"
-                className="text-sm"
+                className={cn('text-sm', queued && 'text-[13px]')}
                 renderCodeBlock={NativeChatCodeBlock}
                 onLinkClick={onLinkClick}
                 allowFileUriLinks={allowFileUriLinks}
