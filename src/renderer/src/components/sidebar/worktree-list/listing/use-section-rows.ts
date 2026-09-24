@@ -16,7 +16,7 @@ import type { ProjectGroupingModel } from '../grouping/project-grouping'
 import type { PinnedWorktreeDisplayPolicy, Row, WorktreeGroupBy } from '../grouping/row-types'
 import { getLogicalRepoOrderRankById } from '../../project-header-drop'
 import { getEmptyProjectPlaceholderRepoIds } from '../../empty-project-placeholder-repos'
-import { addHostSectionRows } from '../../host-section-rows'
+import type { HostSectionRow } from '../../host-section-rows'
 import { orderHostSectionOptions } from '../../host-section-order'
 import { buildSidebarHostOptions } from '../../sidebar-host-options'
 import { selectPendingWorktreeCreationKeys } from './pending-worktree-creation-keys'
@@ -46,7 +46,7 @@ type SectionRowsArgs = {
   workspaceHostScope: AppState['workspaceHostScope']
 }
 
-function collectRenderedSidebarRowKeys(sectionRows: ReturnType<typeof addHostSectionRows>) {
+function collectRenderedSidebarRowKeys(sectionRows: readonly HostSectionRow[]) {
   const keys = new Set<string>()
   for (const row of sectionRows) {
     if (row.type === 'header') {
@@ -195,7 +195,7 @@ export function useSidebarSectionRows(args: SectionRowsArgs) {
     () => orderHostSectionOptions(hostOptions, workspaceHostOrder),
     [hostOptions, workspaceHostOrder]
   )
-  const [hostDragActive, setHostDragActive] = useState(false)
+  const [, setHostDragActive] = useState(false)
   const handleReorderHostSections = useCallback(
     (orderedVisibleHostIds: ExecutionHostId[]) => {
       const visibleHostIds = new Set(orderedVisibleHostIds)
@@ -215,29 +215,10 @@ export function useSidebarSectionRows(args: SectionRowsArgs) {
     },
     [orderedHostOptions, setWorkspaceHostOrder, workspaceHostOrder]
   )
-  const sectionRows = useMemo(
-    () =>
-      addHostSectionRows({
-        rows,
-        hostOptions: orderedHostOptions,
-        workspaceHostScope: args.workspaceHostScope,
-        visibleWorkspaceHostIds: args.visibleWorkspaceHostIds,
-        defaultHostId,
-        collapsedHostKeys: effectiveCollapsedGroups,
-        forceCollapseHosts: hostDragActive,
-        // Why: projects/workspaces are the primary sidebar object; host sections are only an explicit host-filter view.
-        preferProjectGrouping: true
-      }),
-    [
-      args.visibleWorkspaceHostIds,
-      args.workspaceHostScope,
-      defaultHostId,
-      effectiveCollapsedGroups,
-      hostDragActive,
-      orderedHostOptions,
-      rows
-    ]
-  )
+  // Why: this fork keeps one flat list across every machine — host cards are
+  // operational chrome, not navigation. The Hosts menu still scopes which hosts
+  // contribute rows, which happens above this hook (useSidebarHostVisibleScope).
+  const sectionRows = useMemo<HostSectionRow[]>(() => rows, [rows])
   const renderedSidebarRowKeys = useMemo(
     () => collectRenderedSidebarRowKeys(sectionRows),
     [sectionRows]
