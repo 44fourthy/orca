@@ -10,6 +10,7 @@ import { recordDurableCrashBreadcrumb } from '../crash-reporting/durable-crash-b
 import { clearTrustedUIRendererWebContentsId, setTrustedUIRendererWebContentsId } from '../ipc/ui'
 import type { Store } from '../persistence'
 import { closeDashboardPopout } from './dashboard-popout-window'
+import { appVariantTitlebarCss } from './app-variant-titlebar'
 import {
   installMainWindowCloseLifecycle,
   WINDOW_QUIT_RENDERER_ACK_TIMEOUT_MS
@@ -140,6 +141,15 @@ export function createMainWindow(
     }
   })
   const rendererWebContentsId = mainWindow.webContents.id
+  // Branded per-client copies tint their titlebar in the client's color so the
+  // window chrome says which app this is (see packaged-app-variant). Re-applied
+  // on every load, so a reload keeps the tint.
+  const variantTitlebarCss = appVariantTitlebarCss()
+  if (variantTitlebarCss) {
+    mainWindow.webContents.on('did-finish-load', () => {
+      void mainWindow.webContents.insertCSS(variantTitlebarCss)
+    })
+  }
   installWindowsPathRegistryChangeListener(mainWindow)
   // Why: native paste fallback is privileged IPC; only the top-level renderer may request it.
   setTrustedUIRendererWebContentsId(rendererWebContentsId)
