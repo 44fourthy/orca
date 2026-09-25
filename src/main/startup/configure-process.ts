@@ -6,6 +6,7 @@ import { getVersionManagerBinPaths } from '../codex-cli/command'
 import { getMainE2EConfig } from '../e2e-config'
 import { DISABLED_CHROMIUM_FEATURES } from './disabled-chromium-features'
 import { readHttp1CompatibilityMarker } from './http1-compatibility-marker'
+import { packagedVariantUserDataDir } from '../../shared/packaged-app-variant'
 
 const DEV_PARENT_SHUTDOWN_GRACE_MS = 3000
 const HTTP1_COMPATIBILITY_ENV_VAR = 'ORCA_DISABLE_HTTP2'
@@ -209,6 +210,13 @@ export function configureDevUserDataPath(isDev: boolean): void {
   }
 
   if (!isDev) {
+    // A branded copy ("Orca LIF.app", one per client) owns its profile: the
+    // copies would otherwise share one SQLite store, daemon socket and
+    // single-instance lock. The default bundle keeps the plain 'orca' profile.
+    const variantUserData = packagedVariantUserDataDir(app.getPath('appData'), process.execPath)
+    if (variantUserData) {
+      app.setPath('userData', variantUserData)
+    }
     return
   }
   const overrideUserDataPath = process.env.ORCA_DEV_USER_DATA_PATH

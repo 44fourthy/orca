@@ -68,7 +68,17 @@ const devChannelRepo = isHourlyChannel
     : isAdhocChannel
       ? 'orca-adhoc'
       : null
-const appId = 'com.stablyai.orca'
+// A branded variant ("lif", "colors", "bara") builds one Orca per client: its
+// own product name, bundle id and icon so the copies sit side by side in the
+// Dock. The runtime profile follows the bundle name (configure-process.ts), so
+// each copy owns its own SQLite store, daemon socket and instance lock.
+const rawBuildVariant = (process.env.ORCA_BUILD_VARIANT ?? '').trim().toLowerCase()
+const buildVariant = /^[a-z][a-z0-9-]*$/.test(rawBuildVariant) ? rawBuildVariant : null
+const VARIANT_LABELS = { lif: 'LIF', colors: 'Colors', bara: 'Bara' }
+const productName = buildVariant
+  ? `Orca ${VARIANT_LABELS[buildVariant] ?? buildVariant.charAt(0).toUpperCase() + buildVariant.slice(1)}`
+  : 'Orca'
+const appId = buildVariant ? `com.fourthy.orca.${buildVariant}` : 'com.stablyai.orca'
 const featureWallResources = {
   from: 'resources/onboarding/feature-wall',
   to: 'onboarding/feature-wall'
@@ -165,7 +175,7 @@ const windowsRuntimeResources = existsSync(
 /** @type {import('electron-builder').Configuration} */
 module.exports = {
   appId,
-  productName: 'Orca',
+  productName,
   protocols: [{ name: 'Orca', schemes: ['orca'] }],
   toolsets: { appimage: '1.0.3' },
   ...(devChannelBuildVersion
@@ -479,7 +489,7 @@ module.exports = {
       role: 'Editor',
       rank: 'Alternate'
     })),
-    icon: 'resources/build/icon.icns',
+    icon: buildVariant ? `resources/build/icon-${buildVariant}.icns` : 'resources/build/icon.icns',
     entitlements: 'resources/build/entitlements.mac.plist',
     entitlementsInherit: 'resources/build/entitlements.mac.plist',
     extendInfo: {
