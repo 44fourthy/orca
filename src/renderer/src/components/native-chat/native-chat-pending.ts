@@ -113,8 +113,16 @@ function messagesAfterPendingBoundary(
   if (boundaryIndex !== -1) {
     return messages.slice(boundaryIndex + 1)
   }
-  // A bounded authoritative read can page the boundary out. Fall back to the
-  // send time instead of matching an arbitrary older identical prompt.
+  // The boundary row paged out of a bounded read — routine in a long session.
+  // Filtering by time is only sound when the boundary's own timestamp is known:
+  // that one is in the transcript host's clock, the same domain as the rows.
+  // Without it the filter compares the client clock against the host's and can
+  // exclude the very row that proves delivery, stranding the echo at the end of
+  // the chat forever. Unanchored, fall back to the whole window — occurrence
+  // counting already keeps an older identical prompt from retiring a newer send.
+  if (pending.afterMessageTimestamp == null) {
+    return messages
+  }
   return messages.filter((message) => messageIsAfterPendingTimestamp(message, pending))
 }
 

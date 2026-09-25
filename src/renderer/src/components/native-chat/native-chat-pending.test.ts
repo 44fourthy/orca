@@ -893,3 +893,36 @@ describe('interleavePendingSends', () => {
     expect(ordered.map((message) => message.id)).toEqual(['m1', 'm2', 'pending:p1', 'pending:p2'])
   })
 })
+
+describe('paged-out send boundary', () => {
+  // Why this shape: a long session's bounded read drops the row a send anchored
+  // on and the send carries no transcript-clock timestamp of its own — the case
+  // that used to strand the echo at the end of the chat.
+  const pagedOut = (id: string, text: string): NativeChatPendingSend => ({
+    ...pendingOf(id, text),
+    afterMessageId: 'paged-out',
+    afterMessageTimestamp: null
+  })
+
+  it('retires an echo once its delivered row is anywhere in the window', () => {
+    const messages = [userMessage('u1', 'run the report'), assistantMessage('a1', 'done')]
+    const pending = [pagedOut('p1', 'run the report')]
+    expect(pendingSendsAsMessages(pending, messages)).toEqual([])
+    expect(prunePendingSends(pending, messages)).toEqual([])
+  })
+
+  it('still filters by a known boundary timestamp when the row is paged out', () => {
+    const messages = [
+      userMessage('old', 'run the report', 100),
+      assistantMessage('old-a', 'done', 100)
+    ]
+    const pending = [
+      {
+        ...pendingOf('p1', 'run the report'),
+        afterMessageId: 'paged-out',
+        afterMessageTimestamp: 500
+      }
+    ]
+    expect(prunePendingSends(pending, messages)).toEqual(pending)
+  })
+})
