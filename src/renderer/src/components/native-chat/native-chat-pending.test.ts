@@ -3,7 +3,6 @@ import type { NativeChatMessage } from '../../../../shared/native-chat-types'
 import {
   appendPendingSendCache,
   clearPendingSendCacheForTests,
-  interleavePendingSends,
   isLaunchPromptMessageId,
   isPendingMessageId,
   launchPromptAsMessage,
@@ -15,6 +14,7 @@ import {
   writePendingSendCache,
   type NativeChatPendingSend
 } from './native-chat-pending'
+import { interleavePendingSends } from './native-chat-pending-interleave'
 import {
   appendCommandMarkerCache,
   applyCommandMarkerBoundaries,
@@ -843,12 +843,46 @@ describe('interleavePendingSends', () => {
     expect(ordered.map((message) => message.id)).toEqual(['m1', 'm2', 'pending:p1'])
   })
 
-  it('keeps an echo at the tail when its boundary is gone, rather than guessing', () => {
+  it('keeps an echo at the tail when nothing orders it', () => {
     const messages = [userMessage('m1', 'first')]
     const pending = [boundarySend('p1', 'next task', 'paged-out')]
     const echoes = pendingSendsAsMessages(pending, messages)
     const ordered = interleavePendingSends(pending, messages, echoes)
     expect(ordered.map((message) => message.id)).toEqual(['m1', 'pending:p1'])
+  })
+
+  it('uses the boundary timestamp when the boundary row was paged out', () => {
+    const messages = [
+      assistantMessage('old-1', 'earlier', 100),
+      assistantMessage('old-2', 'the send stood here', 200),
+      assistantMessage('new-1', 'arrived after the send', 300)
+    ]
+    const pending = [
+      { ...pendingOf('p1', 'next task'), afterMessageId: 'paged-out', afterMessageTimestamp: 200 }
+    ]
+    const echoes = pendingSendsAsMessages(pending, messages)
+    const ordered = interleavePendingSends(pending, messages, echoes)
+    expect(ordered.map((message) => message.id)).toEqual(['old-1', 'old-2', 'pending:p1', 'new-1'])
+  })
+
+  it('puts the echo at the head when every visible row is newer than the send', () => {
+    const messages = [assistantMessage('new-1', 'after the send', 300)]
+    const pending = [
+      { ...pendingOf('p1', 'next task'), afterMessageId: 'paged-out', afterMessageTimestamp: 200 }
+    ]
+    const echoes = pendingSendsAsMessages(pending, messages)
+    const ordered = interleavePendingSends(pending, messages, echoes)
+    expect(ordered.map((message) => message.id)).toEqual(['pending:p1', 'new-1'])
+  })
+
+  it('keeps the tail when no visible row carries a comparable timestamp', () => {
+    const messages = [{ ...assistantMessage('clockless', 'no clock'), timestamp: null }]
+    const pending = [
+      { ...pendingOf('p1', 'next task'), afterMessageId: 'paged-out', afterMessageTimestamp: 200 }
+    ]
+    const echoes = pendingSendsAsMessages(pending, messages)
+    const ordered = interleavePendingSends(pending, messages, echoes)
+    expect(ordered.map((message) => message.id)).toEqual(['clockless', 'pending:p1'])
   })
 
   it('keeps several echoes after one boundary in send order', () => {

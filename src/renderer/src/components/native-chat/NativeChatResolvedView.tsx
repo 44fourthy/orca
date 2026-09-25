@@ -18,7 +18,6 @@ import {
 } from './native-chat-working-suppression'
 import {
   appendPendingSendCache,
-  interleavePendingSends,
   launchPromptAsMessage,
   pendingSendsAsMessages,
   nextNativeChatPendingSendId,
@@ -28,6 +27,8 @@ import {
   writePendingSendCache,
   type NativeChatPendingSend
 } from './native-chat-pending'
+import { useNativeChatFailedDeliveryIds } from './use-native-chat-undelivered-sends'
+import { interleavePendingSends } from './native-chat-pending-interleave'
 import {
   appendCommandMarkerCache,
   applyCommandMarkerBoundaries,
@@ -323,6 +324,9 @@ export function NativeChatResolvedView({
     working: liveWorking,
     interrupted: workingInterrupted
   })
+  const failedDeliveryMessageIds = useNativeChatFailedDeliveryIds(
+    failedLaunchPromptMessageIds, pending, isWorking
+  )
 
   const stopAgent = useCallback(() => {
     setWorkingInterrupted(true)
@@ -411,7 +415,7 @@ export function NativeChatResolvedView({
             showTurnStatus={false}
             onLinkClick={onLinkClick}
             allowFileUriLinks={fileLinkContext !== null}
-            failedDeliveryMessageIds={failedLaunchPromptMessageIds}
+            failedDeliveryMessageIds={failedDeliveryMessageIds}
           />
         )}
       </div>
