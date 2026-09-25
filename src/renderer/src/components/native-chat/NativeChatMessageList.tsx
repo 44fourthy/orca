@@ -11,7 +11,7 @@ import { nativeChatTaskListPredecessors } from './native-chat-task-list-history'
 import { NativeChatTaskList } from './NativeChatTaskList'
 import { projectNativeChatTaskListFrames } from './native-chat-task-list-frames'
 import { omitNativeChatThreadGoalRows } from './native-chat-thread-goal-rows'
-import { shouldShowNativeChatTypingIndicator } from './native-chat-typing-indicator'
+import { useNativeChatWorkingChrome } from './use-native-chat-working-chrome'
 import { useNativeChatTurnStatus } from './use-native-chat-turn-status'
 import { NativeChatTypingIndicatorRow } from './NativeChatTypingIndicatorRow'
 import type { RuntimeFileOperationArgs } from '@/runtime/runtime-file-client'
@@ -149,18 +149,12 @@ export function NativeChatMessageList({
   }, [journalItems, projectMessages, session.messages])
   const taskListPredecessors = useMemo(() => nativeChatTaskListPredecessors(messages), [messages])
   const taskListState = useMemo(() => nativeChatTaskListState(messages), [messages])
-  // Answer-only mode hides the very rows the tail heuristic below looks for, so
-  // its dots would vanish exactly while the agent is busiest and nothing else is
-  // on screen — leaving the sidebar as the only way to tell a turn is alive.
-  // In that mode a working turn is itself the signal.
   const hideToolActivity = useAppStore(
     (state) => state.settings?.nativeChatHideToolActivity === true
   )
-  const showTypingIndicator = showTurnStatus
-    ? isWorking
-    : hideToolActivity
-      ? isWorking
-      : shouldShowNativeChatTypingIndicator({ messages, isWorking })
+  const { showTypingIndicator, narrationMessageId } = useNativeChatWorkingChrome({
+    messages, hideToolActivity, isWorking, showTurnStatus
+  })
   const latestUserIndex = messages.findLastIndex((message) => message.role === 'user')
   const currentTurnKey =
     latestUserIndex === -1 ? undefined : (messages[latestUserIndex]?.id ?? undefined)
@@ -341,6 +335,7 @@ export function NativeChatMessageList({
       taskListPredecessors,
       expandedTurnIds,
       failedDeliveryMessageIds,
+      narrationMessageId,
       allowFileUriLinks,
       runtimeContext,
       onLinkClick,
@@ -353,6 +348,7 @@ export function NativeChatMessageList({
       expandSignal,
       expandedTurnIds,
       failedDeliveryMessageIds,
+      narrationMessageId,
       onLinkClick,
       revealDiff,
       revealedDiff,

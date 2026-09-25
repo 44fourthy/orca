@@ -318,7 +318,7 @@ describe('NativeChatMessageList turn indicator', () => {
     expect(screen.queryByText('Thinking')).toBeNull()
     expect(screen.queryByRole('button', { name: 'Toggle turn details' })).toBeNull()
     expect(screen.queryByText('Running sleep 5')).toBeNull()
-    expect(document.querySelectorAll('.animate-bounce')).toHaveLength(3)
+    expect(screen.getByText('Working…')).toHaveClass('animate-pulse')
   })
 
   it('replaces a bridge ask row and settles it from the FIFO tool result', () => {
