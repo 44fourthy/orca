@@ -74,7 +74,7 @@ const devChannelRepo = isHourlyChannel
 // each copy owns its own SQLite store, daemon socket and instance lock.
 const rawBuildVariant = (process.env.ORCA_BUILD_VARIANT ?? '').trim().toLowerCase()
 const buildVariant = /^[a-z][a-z0-9-]*$/.test(rawBuildVariant) ? rawBuildVariant : null
-const VARIANT_LABELS = { lif: 'LIF', colors: 'Colors', bara: 'Bara' }
+const VARIANT_LABELS = { lif: 'LIF', colors: 'Colors', bara: 'Bara', topline: 'Topline' }
 const productName = buildVariant
   ? `Orca ${VARIANT_LABELS[buildVariant] ?? buildVariant.charAt(0).toUpperCase() + buildVariant.slice(1)}`
   : 'Orca'
