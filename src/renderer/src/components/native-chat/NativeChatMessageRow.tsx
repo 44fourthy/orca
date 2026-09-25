@@ -11,6 +11,7 @@ import type {
   NativeChatToolCallBlock
 } from '../../../../shared/native-chat-types'
 import { deriveNativeChatRowContent } from '../../../../shared/native-chat-row-content'
+import { firstSentences } from './native-chat-narration'
 import { isPendingMessageId } from './native-chat-pending'
 import { NativeChatToolRun } from './NativeChatToolRun'
 import { NativeChatCodeBlock } from './NativeChatCodeBlock'
@@ -42,6 +43,7 @@ export const MessageRow = memo(function MessageRow({
   onLinkClick,
   allowFileUriLinks = false,
   deliveryFailed = false,
+  narration = false,
   structuredActivityUi = true,
   folded = false,
   runtimeContext
@@ -59,6 +61,8 @@ export const MessageRow = memo(function MessageRow({
   onLinkClick?: CommentMarkdownLinkClickHandler
   allowFileUriLinks?: boolean
   deliveryFailed?: boolean
+  /** The working turn's trailing prose: progress talk, rendered small and capped. */
+  narration?: boolean
   structuredActivityUi?: boolean
   /** Behind a folded turn: the row keeps only what outlives the turn. */
   folded?: boolean
@@ -214,9 +218,9 @@ export const MessageRow = memo(function MessageRow({
       />
       {markdown ? (
         <CommentMarkdown
-          content={markdown}
+          content={narration ? firstSentences(markdown) : markdown}
           variant="document"
-          className="text-sm"
+          className={cn('text-sm', narration && 'text-xs italic text-muted-foreground')}
           renderCodeBlock={NativeChatCodeBlock}
           onLinkClick={onLinkClick}
           allowFileUriLinks={allowFileUriLinks}
