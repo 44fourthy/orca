@@ -6,6 +6,7 @@ import {
   getRuntimeMetadataPath,
   type RuntimeMetadata
 } from '../../shared/runtime-bootstrap'
+import { packagedVariantUserDataDir } from '../../shared/packaged-app-variant'
 import { RuntimeClientError } from './types'
 
 export function readMetadata(userDataPath: string): RuntimeMetadata {
@@ -51,7 +52,11 @@ export function getDefaultUserDataPath(
     return process.env.ORCA_USER_DATA_PATH
   }
   if (platform === 'darwin') {
-    return join(homeDir, 'Library', 'Application Support', 'orca')
+    const appData = join(homeDir, 'Library', 'Application Support')
+    // A branded per-client copy ("Orca LIF.app") keeps its own profile under
+    // appData; the default bundle keeps 'orca'. The CLI runs from the same
+    // bundle, so the path tells it which instance's metadata to read.
+    return packagedVariantUserDataDir(appData, process.execPath) ?? join(appData, 'orca')
   }
   if (platform === 'win32') {
     const appData = process.env.APPDATA

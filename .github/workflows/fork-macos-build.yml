@@ -23,6 +23,14 @@ name: Fork macOS build (ad-hoc signed)
 
 on:
   workflow_dispatch:
+    inputs:
+      variant:
+        # Branded per-client copies: productName/appId/icon and each copy's
+        # own userData profile follow this (see config/electron-builder.config.cjs
+        # and src/shared/packaged-app-variant.ts). Blank builds the plain Orca.
+        description: 'Branded variant (lif, colors, bara); blank builds plain Orca'
+        required: false
+        type: string
   push:
     branches:
       - main
@@ -88,6 +96,7 @@ jobs:
           NODE_OPTIONS: --max-old-space-size=6144
           ORCA_LOCAL_BUILD_VERSION: ${{ steps.identity.outputs.version }}
           ORCA_BUILD_COMMIT: ${{ steps.identity.outputs.commit }}
+          ORCA_BUILD_VARIANT: ${{ inputs.variant }}
         run: |
           set -euo pipefail
           node config/scripts/ensure-native-runtime.mjs --runtime=electron
@@ -98,9 +107,9 @@ jobs:
       - name: Sign the app (inside-out, ad-hoc)
         run: |
           set -euo pipefail
-          APP=$(find dist -maxdepth 2 -name 'Orca.app' -type d | head -1)
+          APP=$(find dist -maxdepth 2 -name 'Orca*.app' -type d | head -1)
           echo "signing: $APP"
-          [ -n "$APP" ] || { echo "no Orca.app produced"; exit 1; }
+          [ -n "$APP" ] || { echo "no Orca app produced"; exit 1; }
 
           # Every Mach-O file first (dylibs, helper executables, framework
           # binaries) — a bundle cannot be sealed while its contents are unsigned.
@@ -118,7 +127,8 @@ jobs:
           find "$APP/Contents/Frameworks" -maxdepth 1 -name '*.framework' | while read -r fw; do
             codesign --force --sign - --timestamp=none "$fw"
           done
-          codesign --force --sign - --timestamp=none "$APP/Contents/MacOS/Orca"
+          EXE_NAME=$(/usr/libexec/PlistBuddy -c 'Print :CFBundleExecutable' "$APP/Contents/Info.plist")
+          codesign --force --sign - --timestamp=none "$APP/Contents/MacOS/$EXE_NAME"
           codesign --force --sign - --timestamp=none "$APP"
 
           echo "--- verify ---"
@@ -128,14 +138,14 @@ jobs:
       - name: Archive the signed app
         run: |
           set -euo pipefail
-          APP=$(find dist -maxdepth 2 -name 'Orca.app' -type d | head -1)
+          APP=$(find dist -maxdepth 2 -name 'Orca*.app' -type d | head -1)
           # ditto preserves the signature, permissions and symlinks; `zip` does not.
           ditto -c -k --sequesterRsrc --keepParent "$APP" /tmp/orca-macos-arm64-adhoc.zip
           ls -lh /tmp/orca-macos-arm64-adhoc.zip
 
       - uses: actions/upload-artifact@v4
         with:
-          name: orca-macos-arm64-adhoc
+          name: orca-macos-arm64-adhoc${{ inputs.variant && format('-{0}', inputs.variant) || '' }}
           path: /tmp/orca-macos-arm64-adhoc.zip
           if-no-files-found: error
           retention-days: 14
