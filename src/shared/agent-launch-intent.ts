@@ -39,7 +39,13 @@ export type AgentLaunchPrompt = {
  */
 export type AgentLaunchTarget =
   /** A workspace that already exists, addressed by any selector the runtime resolves. */
-  | { kind: 'existing'; worktree: string }
+  | {
+      kind: 'existing'
+      worktree: string
+      /** The workspace root the host resolved for that selector. Host-set, never accepted from a
+       *  caller: it decides whether a requested `cwd` names the root or somewhere else. */
+      workspacePath?: string
+    }
   /** A worktree this launch creates. `create` is the `worktree.create` request minus its agent
    *  fields — the launch owns those, so a caller cannot set a startup agent behind the router. */
   | { kind: 'create-worktree'; create: Readonly<Record<string, unknown>> }
@@ -99,7 +105,7 @@ export type AgentLaunchOutcome =
       sessionId: string
       handle: string
       /** The host-owned id of the tab that shows this chat: the tab half of the reserved `paneKey`
-       *  when one was sent, else the one the host recorded. Identity, not placement, like the
+       *  when one was sent, else the one the host gave its tab. Identity, not placement, like the
        *  terminal arm's `paneKey`. Absent from hosts that predate it. */
       tabId?: string
     }

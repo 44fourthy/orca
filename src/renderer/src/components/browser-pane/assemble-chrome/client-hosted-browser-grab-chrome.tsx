@@ -1,4 +1,4 @@
-import { BrowserElementToolButtons } from './browser-chrome-toolbar'
+import { BrowserChromeElementToolButtons } from './browser-chrome-element-tool-buttons'
 import { BrowserGuestGrabOverlays } from '../annotate/browser-guest-grab-overlays'
 import type { ClientHostedBrowserGrab } from '../annotate/use-client-hosted-browser-grab'
 
@@ -14,7 +14,12 @@ export function ClientHostedBrowserGrabTools({
 }): React.JSX.Element {
   return (
     <>
-      <BrowserElementToolButtons elementTools={grab.elementTools} />
+      <BrowserChromeElementToolButtons
+        tools={grab.elementTools}
+        showGrab
+        showAnnotate
+        showTourAnchors={false}
+      />
       {grab.markup.drawButton}
     </>
   )
