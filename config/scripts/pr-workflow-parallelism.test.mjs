@@ -6,7 +6,11 @@ import { MOBILE_WEB_APP_DEPENDENCIES_REQUIRED_ENV } from './mobile-web-app-bundl
 
 const workflow = parse(readFileSync('.github/workflows/pr.yml', 'utf8'))
 const prTestLocWorkflow = parse(readFileSync('.github/workflows/pr-test-loc.yml', 'utf8'))
-const trackingWorkflow = parse(readFileSync('.github/workflows/track-community-prs.yaml', 'utf8'))
+// Why: the fork deletes track-community-prs.yaml (it needs Stably's bot token and can never pass here).
+const TRACKING_WORKFLOW_PATH = '.github/workflows/track-community-prs.yaml'
+const trackingWorkflow = existsSync(TRACKING_WORKFLOW_PATH)
+  ? parse(readFileSync(TRACKING_WORKFLOW_PATH, 'utf8'))
+  : null
 const releasePolicyWorkflow = parse(readFileSync('.github/workflows/release-policy.yml', 'utf8'))
 const issueLabelWorkflow = parse(readFileSync('.github/workflows/issue-os-labeler.yaml', 'utf8'))
 const unitTestWorkflow = parse(readFileSync('.github/workflows/unit-tests.yml', 'utf8'))
@@ -53,7 +57,9 @@ describe('PR workflow parallelism', () => {
     expect(workflow.jobs.typecheck['runs-on']).toBe('ubuntu-24.04-arm')
     expect(workflow.jobs.verify['runs-on']).toBe('ubuntu-slim')
     expect(prTestLocWorkflow.jobs.loc['runs-on']).toBe('ubuntu-slim')
-    expect(trackingWorkflow.jobs['track-community-pr']['runs-on']).toBe('ubuntu-slim')
+    if (trackingWorkflow) {
+      expect(trackingWorkflow.jobs['track-community-pr']['runs-on']).toBe('ubuntu-slim')
+    }
     expect(releasePolicyWorkflow.jobs.enforce['runs-on']).toBe('ubuntu-slim')
     expect(issueLabelWorkflow.jobs['apply-os-label']['runs-on']).toBe('ubuntu-slim')
   })
