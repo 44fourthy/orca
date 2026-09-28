@@ -57,12 +57,17 @@ export function useNativeChatPtyComposerSend(args: {
       return
     }
     const classification = args.classifySend(text)
-    const { sendOptions } = resolveNativeChatLaunchDraftSend({
+    const { sendOptions: draftSendOptions } = resolveNativeChatLaunchDraftSend({
       launchDraft: args.launchDraft,
       launchDraftResolved: args.launchDraftResolved,
       agent: args.agent,
       readScreen: () => args.readTerminalScreen?.()
     })
+    // Why: every chat send confirms its Enter took by reading the agent screen.
+    const sendOptions =
+      draftSendOptions || args.readTerminalScreen
+        ? { ...draftSendOptions, readScreen: args.readTerminalScreen }
+        : undefined
     let pendingHandle: NativeChatSendHandle | null = null
     // Why: slash-like text must not silently drop its attached images.
     if (classification !== 'chat' && imagePaths.length === 0) {
