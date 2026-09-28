@@ -11,6 +11,7 @@ import type {
 } from '../../../../shared/native-chat-types'
 import { deriveNativeChatRowContent } from '../../../../shared/native-chat-row-content'
 import { isPendingMessageId } from './native-chat-pending'
+import { useNativeChatAgentQueue } from './native-chat-queue-context'
 import { NativeChatToolRun } from './NativeChatToolRun'
 import { NativeChatCodeBlock } from './NativeChatCodeBlock'
 import { NativeChatNoticeRow } from './NativeChatNoticeRow'
@@ -64,6 +65,7 @@ export const MessageRow = memo(function MessageRow({
   runtimeContext?: RuntimeFileOperationArgs | null
 }): React.JSX.Element | null {
   const rowRef = useRef<HTMLDivElement | null>(null)
+  const agentQueue = useNativeChatAgentQueue()
   // One pass per block set, shared with the list that decides whether this row
   // occupies a slot — so "draws nothing" means the same thing to both.
   const { backgroundTasks, hasImages, markdown, prose, subagentGroups, tools } =
@@ -128,6 +130,8 @@ export const MessageRow = memo(function MessageRow({
     // An unconfirmed queued send reads as in-flight: italic and one step
     // smaller than a landed prompt, so it cannot be mistaken for the record.
     const queued = isPendingMessageId(message.id)
+    // Claude is holding it in its own queue: delivered, waiting for the agent.
+    const heldByAgent = queued && agentQueue.queuedIds.has(message.id)
     return (
       <div ref={rowRef} className="group relative flex flex-col items-end gap-0.5">
         {/* User turns get a distinct muted fill (not the card/canvas color) so
@@ -174,6 +178,19 @@ export const MessageRow = memo(function MessageRow({
           <div className="flex select-none items-center gap-1 transition-opacity can-hover:pointer-events-none can-hover:opacity-0 group-hover:pointer-events-auto group-hover:opacity-100 group-has-[:focus-visible]:pointer-events-auto group-has-[:focus-visible]:opacity-100">
             {markdown ? <NativeChatCopyButton text={markdown} /> : null}
             <NativeChatMessageTimestamp timestamp={message.timestamp} focusable />
+          </div>
+        ) : null}
+        {heldByAgent ? (
+          <div className="flex max-w-[85%] items-center gap-1.5 text-[11px] text-muted-foreground">
+            <span>{translate('components.native-chat.queuedInAgent', 'Queued')}</span>
+            <span aria-hidden="true">·</span>
+            <button
+              type="button"
+              className="underline-offset-2 hover:text-foreground hover:underline"
+              onClick={agentQueue.sendNow}
+            >
+              {translate('components.native-chat.sendQueuedNow', 'Send now')}
+            </button>
           </div>
         ) : null}
         {deliveryFailed ? (
