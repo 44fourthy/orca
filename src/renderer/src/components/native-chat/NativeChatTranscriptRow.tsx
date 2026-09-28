@@ -18,8 +18,6 @@ export type NativeChatTranscriptRowContext = {
   taskListPredecessors: ReadonlyMap<string, NativeChatTaskListPredecessors>
   expandedTurnIds: ReadonlySet<string>
   failedDeliveryMessageIds?: ReadonlySet<string>
-  /** The working turn's trailing prose row, rendered as a small narration line. */
-  narrationMessageId?: string
   allowFileUriLinks: boolean
   runtimeContext?: RuntimeFileOperationArgs | null
   onLinkClick?: CommentMarkdownLinkClickHandler
@@ -63,7 +61,6 @@ export const NativeChatTranscriptRow = memo(function NativeChatTranscriptRow({
           onLinkClick={context.onLinkClick}
           allowFileUriLinks={context.allowFileUriLinks}
           deliveryFailed={context.failedDeliveryMessageIds?.has(message.id) === true}
-          narration={context.narrationMessageId === message.id}
           structuredActivityUi={context.showTurnStatus}
           folded={slot.folded}
           runtimeContext={context.runtimeContext}

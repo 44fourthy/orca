@@ -1,6 +1,5 @@
 import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { ArrowDown } from 'lucide-react'
-import { useAppStore } from '../../store'
 import type { CommentMarkdownLinkClickHandler } from '@/components/sidebar/CommentMarkdown'
 import { translate } from '@/i18n/i18n'
 import type { NativeChatLiveSession } from './use-native-chat-live-session'
@@ -11,7 +10,7 @@ import { nativeChatTaskListPredecessors } from './native-chat-task-list-history'
 import { NativeChatTaskList } from './NativeChatTaskList'
 import { projectNativeChatTaskListFrames } from './native-chat-task-list-frames'
 import { omitNativeChatThreadGoalRows } from './native-chat-thread-goal-rows'
-import { useNativeChatWorkingChrome } from './use-native-chat-working-chrome'
+import { shouldShowNativeChatTypingIndicator } from './native-chat-typing-indicator'
 import { useNativeChatTurnStatus } from './use-native-chat-turn-status'
 import { NativeChatTypingIndicatorRow } from './NativeChatTypingIndicatorRow'
 import type { RuntimeFileOperationArgs } from '@/runtime/runtime-file-client'
@@ -149,12 +148,9 @@ export function NativeChatMessageList({
   }, [journalItems, projectMessages, session.messages])
   const taskListPredecessors = useMemo(() => nativeChatTaskListPredecessors(messages), [messages])
   const taskListState = useMemo(() => nativeChatTaskListState(messages), [messages])
-  const hideToolActivity = useAppStore(
-    (state) => state.settings?.nativeChatHideToolActivity === true
-  )
-  const { showTypingIndicator, narrationMessageId } = useNativeChatWorkingChrome({
-    messages, hideToolActivity, isWorking, showTurnStatus
-  })
+  const showTypingIndicator = showTurnStatus
+    ? isWorking
+    : shouldShowNativeChatTypingIndicator({ messages, isWorking })
   const latestUserIndex = messages.findLastIndex((message) => message.role === 'user')
   const currentTurnKey =
     latestUserIndex === -1 ? undefined : (messages[latestUserIndex]?.id ?? undefined)
@@ -203,14 +199,12 @@ export function NativeChatMessageList({
         turnDiffs,
         showTurnStatus,
         expandedTurnKeys: expandedTurnIds,
-        hideToolActivity,
         isWorking,
         lifecycleWorking
       }),
     [
       currentTurnKey,
       expandedTurnIds,
-      hideToolActivity,
       isWorking,
       latestUserIndex,
       lifecycleWorking,
@@ -335,7 +329,6 @@ export function NativeChatMessageList({
       taskListPredecessors,
       expandedTurnIds,
       failedDeliveryMessageIds,
-      narrationMessageId,
       allowFileUriLinks,
       runtimeContext,
       onLinkClick,
@@ -348,7 +341,6 @@ export function NativeChatMessageList({
       expandSignal,
       expandedTurnIds,
       failedDeliveryMessageIds,
-      narrationMessageId,
       onLinkClick,
       revealDiff,
       revealedDiff,
