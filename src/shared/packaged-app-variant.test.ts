@@ -17,7 +17,9 @@ describe('packagedAppVariant', () => {
   })
 
   it('keys the userData directory by variant only when branded', () => {
-    expect(packagedVariantUserDataDir('/u/appData', exe('Orca LIF.app'))).toBe('/u/appData/orca-lif')
-    expect(packagedVariantUserDataDir('/u/appData', exe('Orca.app'))).toBeNull()
+    expect(packagedVariantUserDataDir('/u/appData', exe('Orca LIF.app'), 'darwin')).toBe(
+      '/u/appData/orca-lif'
+    )
+    expect(packagedVariantUserDataDir('/u/appData', exe('Orca.app'), 'darwin')).toBeNull()
   })
 })

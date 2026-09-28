@@ -1,8 +1,17 @@
-import { describe, expect, it, vi } from 'vitest'
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import type { BrowserWindow } from 'electron'
 import { applyAppVariantWindowChrome, appVariantTitlebarCss } from './app-variant-titlebar'
 
 const exe = (bundle: string): string => `/Applications/${bundle}/Contents/MacOS/Orca`
+
+// Why: variants exist only in macOS bundles, and the unit shards run on Linux.
+const originalPlatform = process.platform
+beforeAll(() => {
+  Object.defineProperty(process, 'platform', { configurable: true, value: 'darwin' })
+})
+afterAll(() => {
+  Object.defineProperty(process, 'platform', { configurable: true, value: originalPlatform })
+})
 
 describe('appVariantTitlebarCss', () => {
   it('tints the titlebar and adds the accent strip for each branded bundle', () => {

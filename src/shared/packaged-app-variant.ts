@@ -20,7 +20,11 @@ export function packagedAppVariant(execPath: string, platform = process.platform
 
 /** The variant's own userData directory under `appDataDir`, or null for the
  *  default bundle (which keeps the plain `orca` profile). */
-export function packagedVariantUserDataDir(appDataDir: string, execPath: string): string | null {
-  const variant = packagedAppVariant(execPath)
+export function packagedVariantUserDataDir(
+  appDataDir: string,
+  execPath: string,
+  platform = process.platform
+): string | null {
+  const variant = packagedAppVariant(execPath, platform)
   return variant ? join(appDataDir, `orca-${variant}`) : null
 }
