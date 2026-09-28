@@ -66,9 +66,6 @@ export type NativeChatTranscriptSlotsInput = {
   showTurnStatus: boolean
   /** Turns the reader opened. Everything else with a duration stays folded. */
   expandedTurnKeys: ReadonlySet<string>
-  /** Hide tool-call/result, roster and task rows (fork default). The row
-   *  component derives with the same flag, so "draws nothing" agrees. */
-  hideToolActivity?: boolean
   isWorking: boolean
   /** Session-level lifecycle, which outlives a transcript that never said "done". */
   lifecycleWorking: boolean
@@ -90,64 +87,21 @@ export function buildNativeChatTranscriptSlots(
     isWorking,
     lifecycleWorking
   } = input
-  const hideToolActivity = input.hideToolActivity === true
   // One pass to decide what each row draws, then the fold over those readings —
   // so "is this the answer" and "does this row render prose" cannot disagree.
   const foldRows: NativeChatTurnFoldRow[] = messages.map((message, index) => {
-    const content = deriveNativeChatRowContent(message.blocks, { hideToolActivity })
+    const content = deriveNativeChatRowContent(message.blocks)
     return {
       turnKey: turnKeys[index],
       role: message.role,
-      rendersProse:
-        !(hideToolActivity && message.role === 'reasoning') &&
-        (content.markdown.length > 0 || content.hasImages),
+      rendersProse: content.markdown.length > 0 || content.hasImages,
       // The raw blocks, not the renderable ones: a childless roster draws no row
       // and its plain-text twin is then the only record the spawn happened.
-      // Hidden activity draws nothing at all, so its roster cannot outlive a fold.
-      outlivesTurn:
-        !hideToolActivity &&
-        message.blocks.some(
-          (block) => isSubagentGroupBlock(block) || isBackgroundTaskBlock(block)
-        )
+      outlivesTurn: message.blocks.some(
+        (block) => isSubagentGroupBlock(block) || isBackgroundTaskBlock(block)
+      )
     }
   })
-  // Answer-only: agents narrate progress between tool calls as ordinary text
-  // ("Before I delete anything, let me check…"), so with activity hidden a turn
-  // keeps only its LAST assistant prose run — the reply — and drops the
-  // commentary rows with the rest of the activity. Reasoning rows go too: they
-  // are the model thinking aloud, which is why the setting exists.
-  const commentaryIndexes = new Set<number>()
-  if (hideToolActivity) {
-    const lastProseByTurn = new Map<string, number>()
-    foldRows.forEach((row, index) => {
-      if (row.role === 'assistant' && row.rendersProse && row.turnKey !== undefined) {
-        lastProseByTurn.set(row.turnKey, index)
-      }
-    })
-    foldRows.forEach((row, index) => {
-      if (
-        row.role === 'assistant' &&
-        row.rendersProse &&
-        row.turnKey !== undefined &&
-        lastProseByTurn.get(row.turnKey) !== index
-      ) {
-        commentaryIndexes.add(index)
-        // The fold must not count commentary as the turn's answer.
-        row.rendersProse = false
-      }
-    })
-  }
-  const rowDrawsContent = (index: number): boolean => {
-    const message = messages[index]!
-    if (commentaryIndexes.has(index)) {
-      // Its only remaining content was prose; tool activity is hidden too.
-      return false
-    }
-    if (hideToolActivity && message.role === 'reasoning') {
-      return false
-    }
-    return nativeChatRowRendersContent(message.blocks, { hideToolActivity })
-  }
   // Liveness is the turn's, not any one call's: the run at the frontier stays
   // live between its calls, and a run the agent has moved past is settled even
   // while its last call is still reporting. An approval's receipt decides a call
@@ -188,7 +142,8 @@ export function buildNativeChatTranscriptSlots(
     // Skipping a folded row entirely is what keeps windowing honest: a counted
     // index the row declines to draw reserves estimated height for nothing and
     // opens a gap in the transcript.
-    const drawsRow = receipt !== undefined || (!folded && rowDrawsContent(index))
+    const drawsRow =
+      receipt !== undefined || (!folded && nativeChatRowRendersContent(message.blocks))
     if (!drawsRow && status === undefined && turnDiff === undefined) {
       continue
     }

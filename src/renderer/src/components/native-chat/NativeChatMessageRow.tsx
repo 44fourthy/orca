@@ -1,6 +1,5 @@
 import { memo, useCallback, useRef } from 'react'
 import { Goal } from 'lucide-react'
-import { useAppStore } from '../../store'
 import CommentMarkdown, {
   type CommentMarkdownLinkClickHandler
 } from '@/components/sidebar/CommentMarkdown'
@@ -11,7 +10,6 @@ import type {
   NativeChatToolCallBlock
 } from '../../../../shared/native-chat-types'
 import { deriveNativeChatRowContent } from '../../../../shared/native-chat-row-content'
-import { firstSentences } from './native-chat-narration'
 import { isPendingMessageId } from './native-chat-pending'
 import { NativeChatToolRun } from './NativeChatToolRun'
 import { NativeChatCodeBlock } from './NativeChatCodeBlock'
@@ -43,7 +41,6 @@ export const MessageRow = memo(function MessageRow({
   onLinkClick,
   allowFileUriLinks = false,
   deliveryFailed = false,
-  narration = false,
   structuredActivityUi = true,
   folded = false,
   runtimeContext
@@ -61,21 +58,16 @@ export const MessageRow = memo(function MessageRow({
   onLinkClick?: CommentMarkdownLinkClickHandler
   allowFileUriLinks?: boolean
   deliveryFailed?: boolean
-  /** The working turn's trailing prose: progress talk, rendered small and capped. */
-  narration?: boolean
   structuredActivityUi?: boolean
   /** Behind a folded turn: the row keeps only what outlives the turn. */
   folded?: boolean
   runtimeContext?: RuntimeFileOperationArgs | null
 }): React.JSX.Element | null {
   const rowRef = useRef<HTMLDivElement | null>(null)
-  const hideToolActivity = useAppStore(
-    (state) => state.settings?.nativeChatHideToolActivity === true
-  )
   // One pass per block set, shared with the list that decides whether this row
   // occupies a slot — so "draws nothing" means the same thing to both.
   const { backgroundTasks, hasImages, markdown, prose, subagentGroups, tools } =
-    deriveNativeChatRowContent(message.blocks, { hideToolActivity })
+    deriveNativeChatRowContent(message.blocks)
   const isUser = message.role === 'user'
   const isReasoning = message.role === 'reasoning'
   const isSystem = message.role === 'system'
@@ -91,12 +83,11 @@ export const MessageRow = memo(function MessageRow({
   // bubble.
   // After all hooks, so hook order stays unconditional.
   if (
-    (hideToolActivity && isReasoning) ||
-    (markdown.length === 0 &&
-      !hasImages &&
-      tools.length === 0 &&
-      subagentGroups.length === 0 &&
-      backgroundTasks.length === 0)
+    markdown.length === 0 &&
+    !hasImages &&
+    tools.length === 0 &&
+    subagentGroups.length === 0 &&
+    backgroundTasks.length === 0
   ) {
     return null
   }
@@ -218,9 +209,9 @@ export const MessageRow = memo(function MessageRow({
       />
       {markdown ? (
         <CommentMarkdown
-          content={narration ? firstSentences(markdown) : markdown}
+          content={markdown}
           variant="document"
-          className={cn('text-sm', narration && 'text-xs italic text-muted-foreground')}
+          className="text-sm"
           renderCodeBlock={NativeChatCodeBlock}
           onLinkClick={onLinkClick}
           allowFileUriLinks={allowFileUriLinks}
