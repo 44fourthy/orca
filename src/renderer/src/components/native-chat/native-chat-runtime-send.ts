@@ -26,6 +26,7 @@ import {
   waitForNativeChatPtyIdle
 } from './native-chat-pty-send-queue'
 import { confirmNativeChatSubmit, NATIVE_CHAT_SUBMIT_CHECK_MS } from './native-chat-submit-confirm'
+import { remoteNativeChatSendTarget, sendRemoteNativeChatPrompt } from './native-chat-remote-send'
 
 export { NATIVE_CHAT_ADVANCE_BUFFER_MS, NATIVE_CHAT_QUESTION_STEP_MS, NATIVE_CHAT_SUBMIT_DELAY_MS }
 export { resetNativeChatPtySendQueuesForTests }
@@ -145,14 +146,10 @@ export function sendNativeChatMessage(
         if (isCancelled()) {
           return
         }
-        sendRuntimePtyInput(settings, ptyId, buildNativeChatPasteBytes(text))
-        // Schedule from the actual body write: an overdue clear-confirm callback
-        // must not collapse the required body-to-Enter gap after a renderer stall.
-        delay(NATIVE_CHAT_SUBMIT_DELAY_MS, () => {
-          const submit = (): void => {
-            sendRuntimePtyInput(settings, ptyId, NATIVE_CHAT_SUBMIT)
-          }
-          submit()
+        const submit = (): void => {
+          sendRuntimePtyInput(settings, ptyId, NATIVE_CHAT_SUBMIT)
+        }
+        const confirm = (): void =>
           confirmNativeChatSubmit({
             text,
             readScreen: options?.readScreen,
@@ -160,6 +157,22 @@ export function sendNativeChatMessage(
             resendEnter: submit,
             done: markSubmitted
           })
+        // A runtime pane sends body + Enter as one host-sequenced write (mobile's path).
+        const remote = remoteNativeChatSendTarget(settings, ptyId)
+        if (remote) {
+          void sendRemoteNativeChatPrompt(remote, buildNativeChatPasteBytes(text)).then(() => {
+            if (!isCancelled()) {
+              confirm()
+            }
+          })
+          return
+        }
+        sendRuntimePtyInput(settings, ptyId, buildNativeChatPasteBytes(text))
+        // Schedule from the actual body write: an overdue clear-confirm callback
+        // must not collapse the required body-to-Enter gap after a renderer stall.
+        delay(NATIVE_CHAT_SUBMIT_DELAY_MS, () => {
+          submit()
+          confirm()
         })
       })
     },
