@@ -16,6 +16,7 @@ import {
 import { imageSourcePathFromText } from '../../shared/native-chat-image-transcript-markers'
 import { claudeContentBlocks } from './transcript-record-blocks'
 import { claudeInterruptedMessageId } from './transcript-turn-markers'
+import { decodeClaudeQueuedCommand } from './transcript-line-decoders-claude-queued'
 
 const MAX_EDIT_PATCH_HUNKS = 40
 const MAX_EDIT_PATCH_HUNK_LINES = 400
@@ -79,6 +80,9 @@ export function decodeClaudeTranscriptLine(
     return null
   }
   const role = record.type
+  if (role === 'attachment') {
+    return decodeClaudeQueuedCommand(record, fallbackId)
+  }
   if (role !== 'user' && role !== 'assistant') {
     return null
   }
