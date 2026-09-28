@@ -27,19 +27,15 @@ import {
   writePendingSendCache,
   type NativeChatPendingSend
 } from './native-chat-pending'
-import { useNativeChatFailedDeliveryIds } from './use-native-chat-undelivered-sends'
-import { interleavePendingSends } from './native-chat-pending-interleave'
+import { NativeChatAgentQueueContext, useNativeChatDelivery } from './use-native-chat-claude-queue'
+import { withPendingRows } from './native-chat-pending-interleave'
 import {
   appendCommandMarkerCache,
   applyCommandMarkerBoundaries,
-  commandMarkersAsMessages,
   readCommandMarkerCache,
   type NativeChatCommandMarker
 } from './native-chat-command-marker'
-import {
-  deriveNativeChatStreamingText,
-  nativeChatStreamingMessage
-} from '../../../../shared/native-chat-streaming'
+import { deriveNativeChatStreamingText } from '../../../../shared/native-chat-streaming'
 import {
   shouldFocusNativeChatComposerFromEditingKey,
   shouldFocusNativeChatPaneFromPointerTarget,
@@ -279,22 +275,16 @@ export function NativeChatResolvedView({
     liveWorking,
     hookPreviewIsToolOutput
   ])
-  const sessionWithPending = useMemo<typeof session>(() => {
-    if (pending.length === 0 && commandMarkers.length === 0 && !streamingText) {
-      return sessionAfterCommandBoundaries
-    }
-    return {
-      ...sessionAfterCommandBoundaries,
-      messages: [
-        // Echoes sit at their send boundary, so transcript rows that arrive
-        // after a mid-turn send render below the message instead of above it
-        // (stablyai/orca#22086), and the live preview stays the newest row.
-        ...interleavePendingSends(pending, sessionAfterCommandBoundaries.messages, pendingMessages),
-        ...commandMarkersAsMessages(commandMarkers),
-        ...(streamingText ? [nativeChatStreamingMessage(streamingText)] : [])
-      ]
-    }
-  }, [sessionAfterCommandBoundaries, pending, pendingMessages, commandMarkers, streamingText])
+  const sessionWithPending = useMemo(
+    () =>
+      withPendingRows(sessionAfterCommandBoundaries, {
+        pending,
+        pendingMessages,
+        commandMarkers,
+        streamingText
+      }),
+    [sessionAfterCommandBoundaries, pending, pendingMessages, commandMarkers, streamingText]
+  )
   // Derive the view state from the pending-augmented session so a send into an
   // otherwise-empty conversation flips to the list (showing the queued bubble)
   // instead of staying on the empty state.
@@ -324,8 +314,9 @@ export function NativeChatResolvedView({
     working: liveWorking,
     interrupted: workingInterrupted
   })
-  const failedDeliveryMessageIds = useNativeChatFailedDeliveryIds(
-    failedLaunchPromptMessageIds, pending, isWorking
+  const { failedDeliveryMessageIds, agentQueue } = useNativeChatDelivery(
+    { failedLaunchPromptMessageIds, pending, isWorking },
+    { readTerminalScreen, targetPtyId, terminalTabId }
   )
 
   const stopAgent = useCallback(() => {
@@ -405,18 +396,20 @@ export function NativeChatResolvedView({
         ) : viewState.kind === 'empty' ? (
           <NativeChatEmptyState kind="empty" agent={agent} />
         ) : (
-          <NativeChatMessageList
-            session={sessionWithPending}
-            isVisible={isVisible}
-            isWorking={isWorking}
-            expandSignal={false}
-            fontScale={fontScale.scale}
-            workingStartedAt={hookWorkingEpoch}
-            showTurnStatus={false}
-            onLinkClick={onLinkClick}
-            allowFileUriLinks={fileLinkContext !== null}
-            failedDeliveryMessageIds={failedDeliveryMessageIds}
-          />
+          <NativeChatAgentQueueContext.Provider value={agentQueue}>
+            <NativeChatMessageList
+              session={sessionWithPending}
+              isVisible={isVisible}
+              isWorking={isWorking}
+              expandSignal={false}
+              fontScale={fontScale.scale}
+              workingStartedAt={hookWorkingEpoch}
+              showTurnStatus={false}
+              onLinkClick={onLinkClick}
+              allowFileUriLinks={fileLinkContext !== null}
+              failedDeliveryMessageIds={failedDeliveryMessageIds}
+            />
+          </NativeChatAgentQueueContext.Provider>
         )}
       </div>
       {/* Live interactive prompt (question / approval) is the bottom input region

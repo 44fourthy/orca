@@ -17753,6 +17753,8 @@
         }
       },
       "launchPromptNotDelivered": "Not delivered — check the terminal",
+      "queuedInAgent": "Queued",
+      "sendQueuedNow": "Send now",
       "structuredSessionLaunchFailed": "Could not open {{value0}} chat",
       "structuredSessionLaunchFailedDescription": "Orca could not open a structured {{value0}} chat. See the logs for details.",
       "subagents": {

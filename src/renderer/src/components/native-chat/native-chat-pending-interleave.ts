@@ -3,6 +3,11 @@
 // file-length cap, and unit-testable without React.
 
 import type { NativeChatMessage } from '../../../../shared/native-chat-types'
+import { nativeChatStreamingMessage } from '../../../../shared/native-chat-streaming'
+import {
+  commandMarkersAsMessages,
+  type NativeChatCommandMarker
+} from './native-chat-command-marker'
 import type { NativeChatPendingSend } from './native-chat-pending'
 
 /**
@@ -86,4 +91,34 @@ export function interleavePendingSends(
     }
   })
   return [...ordered, ...tail]
+}
+
+/**
+ * The transcript plus the rows the chat layers on top of it: echoes at their
+ * send boundary, so transcript rows that arrive after a mid-turn send render
+ * below the message instead of above it (stablyai/orca#22086); local command
+ * markers; and the live preview as the newest row. Returns the session itself
+ * when there is nothing to layer, so memoized consumers keep their identity.
+ */
+export function withPendingRows<S extends { messages: NativeChatMessage[] }>(
+  session: S,
+  layers: {
+    pending: NativeChatPendingSend[]
+    pendingMessages: readonly NativeChatMessage[]
+    commandMarkers: readonly NativeChatCommandMarker[]
+    streamingText: string | null | undefined
+  }
+): S {
+  const { pending, pendingMessages, commandMarkers, streamingText } = layers
+  if (pending.length === 0 && commandMarkers.length === 0 && !streamingText) {
+    return session
+  }
+  return {
+    ...session,
+    messages: [
+      ...interleavePendingSends(pending, session.messages, pendingMessages),
+      ...commandMarkersAsMessages(commandMarkers),
+      ...(streamingText ? [nativeChatStreamingMessage(streamingText)] : [])
+    ]
+  }
 }
