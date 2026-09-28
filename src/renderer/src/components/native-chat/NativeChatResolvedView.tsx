@@ -27,6 +27,8 @@ import {
   writePendingSendCache,
   type NativeChatPendingSend
 } from './native-chat-pending'
+import { useNativeChatFailedDeliveryIds } from './use-native-chat-undelivered-sends'
+import { interleavePendingSends } from './native-chat-pending-interleave'
 import {
   appendCommandMarkerCache,
   applyCommandMarkerBoundaries,
@@ -284,10 +286,12 @@ export function NativeChatResolvedView({
     return {
       ...sessionAfterCommandBoundaries,
       messages: [
-        ...sessionAfterCommandBoundaries.messages,
+        // Echoes sit at their send boundary, so transcript rows that arrive
+        // after a mid-turn send render below the message instead of above it
+        // (stablyai/orca#22086), and the live preview stays the newest row.
+        ...interleavePendingSends(pending, sessionAfterCommandBoundaries.messages, pendingMessages),
         ...commandMarkersAsMessages(commandMarkers),
-        ...(streamingText ? [nativeChatStreamingMessage(streamingText)] : []),
-        ...pendingMessages
+        ...(streamingText ? [nativeChatStreamingMessage(streamingText)] : [])
       ]
     }
   }, [sessionAfterCommandBoundaries, pending, pendingMessages, commandMarkers, streamingText])
@@ -320,6 +324,9 @@ export function NativeChatResolvedView({
     working: liveWorking,
     interrupted: workingInterrupted
   })
+  const failedDeliveryMessageIds = useNativeChatFailedDeliveryIds(
+    failedLaunchPromptMessageIds, pending, isWorking
+  )
 
   const stopAgent = useCallback(() => {
     setWorkingInterrupted(true)
@@ -408,7 +415,7 @@ export function NativeChatResolvedView({
             showTurnStatus={false}
             onLinkClick={onLinkClick}
             allowFileUriLinks={fileLinkContext !== null}
-            failedDeliveryMessageIds={failedLaunchPromptMessageIds}
+            failedDeliveryMessageIds={failedDeliveryMessageIds}
           />
         )}
       </div>

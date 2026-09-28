@@ -25,6 +25,7 @@ import {
   resetNativeChatPtySendQueuesForTests,
   waitForNativeChatPtyIdle
 } from './native-chat-pty-send-queue'
+import { confirmNativeChatSubmit, NATIVE_CHAT_SUBMIT_CHECK_MS } from './native-chat-submit-confirm'
 
 export { NATIVE_CHAT_ADVANCE_BUFFER_MS, NATIVE_CHAT_QUESTION_STEP_MS, NATIVE_CHAT_SUBMIT_DELAY_MS }
 export { resetNativeChatPtySendQueuesForTests }
@@ -53,6 +54,8 @@ export type NativeChatSendOptions = {
    * pasting on top of residue.
    */
   confirmCleared?: () => boolean
+  /** The agent's rendered screen, used to confirm the Enter actually submitted. */
+  readScreen?: () => string | null | undefined
 }
 
 /** Cancels an in-flight send's pending pty writes (the delayed Enter, and any
@@ -131,7 +134,9 @@ export function sendNativeChatMessage(
 ): NativeChatSendHandle {
   return enqueueNativeChatPtySend(
     ptyId,
-    NATIVE_CHAT_SUBMIT_DELAY_MS + clearConfirmDurationMs(options),
+    NATIVE_CHAT_SUBMIT_DELAY_MS +
+      clearConfirmDurationMs(options) +
+      (options?.readScreen ? NATIVE_CHAT_SUBMIT_CHECK_MS : 0),
     ({ isCancelled, delay, markSubmitted }) => {
       if (isCancelled()) {
         return
@@ -144,8 +149,17 @@ export function sendNativeChatMessage(
         // Schedule from the actual body write: an overdue clear-confirm callback
         // must not collapse the required body-to-Enter gap after a renderer stall.
         delay(NATIVE_CHAT_SUBMIT_DELAY_MS, () => {
-          sendRuntimePtyInput(settings, ptyId, NATIVE_CHAT_SUBMIT)
-          markSubmitted()
+          const submit = (): void => {
+            sendRuntimePtyInput(settings, ptyId, NATIVE_CHAT_SUBMIT)
+          }
+          submit()
+          confirmNativeChatSubmit({
+            text,
+            readScreen: options?.readScreen,
+            delay,
+            resendEnter: submit,
+            done: markSubmitted
+          })
         })
       })
     },
