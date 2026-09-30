@@ -4,13 +4,14 @@ import { nativeChatAttachmentOwnerUnchanged } from './native-chat-resolved-path-
 import {
   nativeChatAttachmentOwnerChangedNotice,
   nativeChatAttachmentUnreadableNotice,
-  nativeChatLocalAttachmentUnsupportedNotice,
   nativeChatWorktreeNotReadyNotice,
   resolveNativeChatAttachmentOwner,
   resolveNativeChatAttachmentOwnerForWorktree,
   uploadNativeChatAttachmentPaths,
+  uploadNativeChatRuntimeAttachmentPaths,
   type NativeChatAttachmentOwner
 } from './native-chat-attachment-upload'
+import type { NativeChatResolvedPathOptions } from './native-chat-resolved-path-ownership'
 
 export type UseNativeChatExternalAttachmentsArgs = {
   terminalTabId: string
@@ -18,7 +19,11 @@ export type UseNativeChatExternalAttachmentsArgs = {
   /** Live composer-disabled state; read at await-resume via a ref so a flip
    *  mid-upload doesn't attach into a guarded composer. */
   disabled: boolean
-  attachResolvedPaths: (paths: string[], connectionId?: string | null) => void
+  attachResolvedPaths: (
+    paths: string[],
+    connectionId?: string | null,
+    options?: NativeChatResolvedPathOptions
+  ) => void
   setNotice: (notice: string | null) => void
 }
 
@@ -79,10 +84,6 @@ export function useNativeChatExternalAttachments({
         setNotice(nativeChatWorktreeNotReadyNotice())
         return
       }
-      if (owner.kind === 'runtime') {
-        setNotice(nativeChatLocalAttachmentUnsupportedNotice())
-        return
-      }
       // Why every exit reports: a drop that reaches here and produces nothing is
       // the silent-failure complaint in #15782. Only a disabled composer stays
       // quiet — it is being torn down or guarded, and has no notice surface.
@@ -92,6 +93,39 @@ export function useNativeChatExternalAttachments({
       const ownerStillCurrent = (): boolean =>
         isSameComposerWorkspace(capturedWorkspace, workspaceRef.current) &&
         nativeChatAttachmentOwnerUnchanged(owner, resolveAttachmentOwner())
+      if (owner.kind === 'runtime') {
+        void (async () => {
+          const remotePaths = await uploadNativeChatRuntimeAttachmentPaths({
+            paths,
+            owner,
+            settings: useAppStore.getState().settings,
+            assertCurrent: () => {
+              if (disabledRef.current || !ownerStillCurrent()) {
+                throw new Error('attachment owner changed')
+              }
+            }
+          })
+          if (disabledRef.current) {
+            return
+          }
+          if (!remotePaths || remotePaths.length === 0) {
+            // The helper already toasted an IPC failure; an empty result with no
+            // failure means nothing was importable.
+            setNotice(nativeChatAttachmentUnreadableNotice())
+            return
+          }
+          if (!ownerStillCurrent()) {
+            setNotice(nativeChatAttachmentOwnerChangedNotice())
+            return
+          }
+          // The uploaded paths live on the app's own runtime host, so they are
+          // target-owned; the predicate re-verifies the same owner at flush.
+          attachResolvedPaths(remotePaths, undefined, {
+            targetOwnerIsCurrent: ownerStillCurrent
+          })
+        })()
+        return
+      }
       if (owner.kind !== 'ssh') {
         void (async () => {
           const authorizedPaths: string[] = []

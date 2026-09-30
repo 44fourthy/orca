@@ -22,6 +22,10 @@ export function nativeChatAttachmentOwnerUnchanged(
   if (captured.kind !== current.kind || captured.kind === 'not-ready') {
     return false
   }
+  if (captured.kind === 'runtime' && current.kind === 'runtime') {
+    // A path saved on one runtime host is unreadable from another.
+    return captured.environmentId === current.environmentId
+  }
   if (captured.kind !== 'ssh' || current.kind !== 'ssh') {
     return true
   }
