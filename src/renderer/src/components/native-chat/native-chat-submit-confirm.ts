@@ -11,7 +11,7 @@ import { agentComposerPromptText } from './native-chat-launch-draft-send'
 /** Gap after an Enter before looking at the composer to see whether it took. */
 export const NATIVE_CHAT_SUBMIT_CHECK_MS = 700
 /** Re-sent Enters before giving up; the undelivered warning covers the rest. */
-export const NATIVE_CHAT_SUBMIT_RETRIES = 2
+export const NATIVE_CHAT_SUBMIT_RETRIES = 3
 
 /** Claude collapses a long or multi-line paste into this placeholder. */
 const PASTED_TEXT_PLACEHOLDER = /^\[Pasted text #\d+/
@@ -47,7 +47,7 @@ export function composerStillHoldsSend(screen: string | null | undefined, text: 
 /** After the Enter, re-send it while our text is still parked, then finish. */
 export function confirmNativeChatSubmit(args: {
   text: string
-  readScreen?: () => string | null | undefined
+  readScreen?: () => Promise<string | null | undefined> | string | null | undefined
   delay: (ms: number, fn: () => void) => void
   resendEnter: () => void
   done: () => void
@@ -58,20 +58,20 @@ export function confirmNativeChatSubmit(args: {
     return
   }
   let retries = 0
-  const check = (): void => {
+  const check = async (): Promise<void> => {
     let parked = false
     try {
-      parked = composerStillHoldsSend(readScreen(), args.text)
+      parked = composerStillHoldsSend(await readScreen(), args.text)
     } catch {
       // Unreadable is unconfirmed; never re-send blind.
     }
     if (parked && retries < NATIVE_CHAT_SUBMIT_RETRIES) {
       retries += 1
       args.resendEnter()
-      args.delay(NATIVE_CHAT_SUBMIT_CHECK_MS, check)
+      args.delay(NATIVE_CHAT_SUBMIT_CHECK_MS, () => void check())
       return
     }
     args.done()
   }
-  args.delay(NATIVE_CHAT_SUBMIT_CHECK_MS, check)
+  args.delay(NATIVE_CHAT_SUBMIT_CHECK_MS, () => void check())
 }

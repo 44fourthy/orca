@@ -6,8 +6,8 @@
 // the Enter can reach Claude while it is still taking in a long paste — it is
 // swallowed and the prompt sits unsent in the terminal until the user presses
 // Enter there. The host sequences body and Enter beside the PTY with its
-// agent-aware delay (as Orca Mobile does), and a readable screen that still
-// shows our text parked gets Enter again, at most twice.
+// agent-aware delay (as Orca Mobile does), and if the HOST's screen still shows
+// our text parked, Enter is sent again (at most three times).
 
 import { sendRuntimePtyInput } from '@/runtime/runtime-terminal-inspection'
 import type { getSettingsForAgentTabRuntimeOwner } from '@/lib/agent-paste-draft'
@@ -24,6 +24,7 @@ import {
   type NativeChatPtySendQueueHandle
 } from './native-chat-pty-send-queue'
 import {
+  readRemoteNativeChatScreen,
   sendRemoteNativeChatPrompt,
   type RemoteNativeChatSendTarget
 } from './native-chat-remote-send'
@@ -40,9 +41,7 @@ export function sendNativeChatRemoteMessage(
   target: RemoteNativeChatSendTarget,
   options?: NativeChatSendOptions
 ): NativeChatPtySendQueueHandle {
-  const confirmMs = options?.readScreen
-    ? NATIVE_CHAT_SUBMIT_CHECK_MS * (NATIVE_CHAT_SUBMIT_RETRIES + 1)
-    : 0
+  const confirmMs = NATIVE_CHAT_SUBMIT_CHECK_MS * (NATIVE_CHAT_SUBMIT_RETRIES + 1)
   return enqueueNativeChatPtySend(
     ptyId,
     NATIVE_CHAT_SUBMIT_DELAY_MS + clearConfirmDurationMs(options) + confirmMs,
@@ -70,7 +69,7 @@ export function sendNativeChatRemoteMessage(
           }
           confirmNativeChatSubmit({
             text,
-            readScreen: options?.readScreen,
+            readScreen: () => readRemoteNativeChatScreen(target),
             delay,
             resendEnter: () => {
               sendRuntimePtyInput(settings, ptyId, NATIVE_CHAT_SUBMIT, 'driving')

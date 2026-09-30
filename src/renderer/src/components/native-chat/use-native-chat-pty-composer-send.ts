@@ -70,7 +70,6 @@ export function useNativeChatPtyComposerSend(args: {
       args.agent === 'claude' && classification === 'chat'
         ? {
             ...launchSendOptions,
-            readScreen: () => args.readTerminalScreen?.(),
             onWriteRejected: () => {
               if (pendingId) {
                 args.optimisticSendOutcome?.reject(pendingId)

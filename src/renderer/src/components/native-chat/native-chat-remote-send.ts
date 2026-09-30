@@ -13,7 +13,7 @@
 // Claude queues mid-turn never does, so it would report healthy sends as stalled.
 
 import type { GlobalSettings } from '../../../../shared/global-settings-types'
-import type { RuntimeTerminalSend } from '../../../../shared/runtime-types'
+import type { RuntimeTerminalRead, RuntimeTerminalSend } from '../../../../shared/runtime-types'
 import { callRuntimeRpc, getActiveRuntimeTarget } from '@/runtime/runtime-rpc-client'
 import {
   getRemoteRuntimePtyEnvironmentId,
@@ -23,6 +23,7 @@ import {
 const DESKTOP_CLIENT = { id: 'orca-desktop', type: 'desktop' } as const
 /** Covers the host's submit delay for a large paste plus the round trip. */
 const REMOTE_CHAT_SEND_TIMEOUT_MS = 30_000
+const REMOTE_CHAT_SCREEN_READ_TIMEOUT_MS = 5_000
 
 export type RemoteNativeChatSendTarget = { environmentId: string; terminal: string }
 
@@ -61,5 +62,24 @@ export async function sendRemoteNativeChatPrompt(
     return result.send.accepted === true ? 'accepted' : 'rejected'
   } catch {
     return 'unknown'
+  }
+}
+
+/** The terminal's current rendered screen as the host sees it, or null. Why the
+ *  host's copy: while the pane shows chat, this client's own terminal buffer can
+ *  lag the PTY, and a stale frame would hide text that is still parked. */
+export async function readRemoteNativeChatScreen(
+  target: RemoteNativeChatSendTarget
+): Promise<string | null> {
+  try {
+    const result = await callRuntimeRpc<{ terminal: RuntimeTerminalRead }>(
+      { kind: 'environment', environmentId: target.environmentId },
+      'terminal.read',
+      { terminal: target.terminal, screen: true },
+      { timeoutMs: REMOTE_CHAT_SCREEN_READ_TIMEOUT_MS }
+    )
+    return result.terminal.source === 'screen' ? result.terminal.tail.join('\n') : null
+  } catch {
+    return null
   }
 }
