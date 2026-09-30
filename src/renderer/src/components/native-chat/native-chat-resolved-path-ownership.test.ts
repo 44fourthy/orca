@@ -3,7 +3,10 @@ import { describe, expect, it, vi } from 'vitest'
 vi.mock('@/i18n/i18n', () => ({ translate: (_key: string, fallback: string) => fallback }))
 
 import { nativeChatAttachmentOwnerUnchanged } from './native-chat-resolved-path-ownership'
-import type { NativeChatSshAttachmentOwner } from './native-chat-attachment-upload'
+import type {
+  NativeChatRuntimeAttachmentOwner,
+  NativeChatSshAttachmentOwner
+} from './native-chat-attachment-upload'
 
 function ssh(overrides: Partial<NativeChatSshAttachmentOwner> = {}): NativeChatSshAttachmentOwner {
   return {
@@ -17,10 +20,22 @@ function ssh(overrides: Partial<NativeChatSshAttachmentOwner> = {}): NativeChatS
   }
 }
 
+function runtime(
+  overrides: Partial<NativeChatRuntimeAttachmentOwner> = {}
+): NativeChatRuntimeAttachmentOwner {
+  return {
+    kind: 'runtime',
+    environmentId: 'env-1',
+    worktreeId: 'worktree-1',
+    worktreePath: '/remote/wt',
+    ...overrides
+  }
+}
+
 describe('nativeChatAttachmentOwnerUnchanged', () => {
   it('keeps same-kind local and runtime owners', () => {
     expect(nativeChatAttachmentOwnerUnchanged({ kind: 'local' }, { kind: 'local' })).toBe(true)
-    expect(nativeChatAttachmentOwnerUnchanged({ kind: 'runtime' }, { kind: 'runtime' })).toBe(true)
+    expect(nativeChatAttachmentOwnerUnchanged(runtime(), runtime())).toBe(true)
   })
 
   it('never treats an unknown owner as the same owner', () => {
