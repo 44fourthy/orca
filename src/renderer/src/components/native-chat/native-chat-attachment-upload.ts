@@ -214,9 +214,7 @@ export async function uploadNativeChatRuntimeAttachmentPaths(args: {
       results.filter((result) => result.status === 'skipped'),
       results.filter((result) => result.status === 'failed')
     )
-    return results
-      .filter((result) => result.status === 'imported')
-      .map((result) => result.destPath)
+    return results.filter((result) => result.status === 'imported').map((result) => result.destPath)
   } catch (err) {
     toast.error(extractIpcErrorMessage(err, 'Failed to upload files.'))
     return null

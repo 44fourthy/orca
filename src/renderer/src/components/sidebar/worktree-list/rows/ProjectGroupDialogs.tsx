@@ -44,20 +44,15 @@ export function SidebarWorktreeListDialogs({
                 'auto.components.sidebar.WorktreeList.bc1460beb3',
                 'Update the group name shown in the sidebar.'
               )
-            : nameDialog?.type === 'create'
-              ? translate(
-                  'auto.components.sidebar.WorktreeList.standaloneGroupDescription',
-                  'Create an empty group. Move projects into it later.'
-                )
-              : translate(
-                  'auto.components.sidebar.WorktreeList.d880ea0744',
-                  'Create a group and move this project into it.'
-                )
+            : translate(
+                'auto.components.sidebar.WorktreeList.d880ea0744',
+                'Create a group and move this project into it.'
+              )
         }
         initialName={
           nameDialog?.type === 'rename'
             ? nameDialog.currentName
-            : nameDialog?.type === 'create-from-repo'
+            : nameDialog
               ? `${nameDialog.repo.displayName} group`
               : ''
         }

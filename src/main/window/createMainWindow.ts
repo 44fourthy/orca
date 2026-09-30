@@ -10,7 +10,6 @@ import { recordDurableCrashBreadcrumb } from '../crash-reporting/durable-crash-b
 import { clearTrustedUIRendererWebContentsId, setTrustedUIRendererWebContentsId } from '../ipc/ui'
 import type { Store } from '../persistence'
 import { closeDashboardPopout } from './dashboard-popout-window'
-import { applyAppVariantWindowChrome } from './app-variant-titlebar'
 import {
   installMainWindowCloseLifecycle,
   WINDOW_QUIT_RENDERER_ACK_TIMEOUT_MS
@@ -141,8 +140,6 @@ export function createMainWindow(
     }
   })
   const rendererWebContentsId = mainWindow.webContents.id
-  // Branded per-client copies tint their window chrome in the client's color.
-  applyAppVariantWindowChrome(mainWindow)
   installWindowsPathRegistryChangeListener(mainWindow)
   // Why: native paste fallback is privileged IPC; only the top-level renderer may request it.
   setTrustedUIRendererWebContentsId(rendererWebContentsId)
