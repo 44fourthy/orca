@@ -14,8 +14,6 @@ import {
   findTerminalTabWorktreeId,
   resolveNativeChatFileLinkContext
 } from './native-chat-file-link'
-import { importExternalPathsToRuntime } from '@/runtime/runtime-file-client'
-import { joinRuntimeTerminalDropDir } from '../terminal-pane/terminal-drop-worktree-path'
 import {
   captureDirectSshMutationExpectation,
   type DirectSshMutationExpectation
@@ -27,21 +25,12 @@ export type NativeChatSshAttachmentOwner = DirectSshMutationExpectation & {
   worktreePath: string
 }
 
-export type NativeChatRuntimeAttachmentOwner = {
-  kind: 'runtime'
-  environmentId: string
-  worktreeId: string
-  worktreePath: string
-}
-
 export type NativeChatAttachmentOwner =
   | { kind: 'local' }
   | NativeChatSshAttachmentOwner
-  /** Runtime-owned (`remote:`) panes attach only paths the runtime host itself
-   *  can read: clipboard images save through the runtime's clipboard importer
-   *  and dropped files upload into the worktree's `.orca/drops` there, mirroring
-   *  the SSH upload. */
-  | NativeChatRuntimeAttachmentOwner
+  /** Runtime-owned (`remote:`) panes keep the composer's existing
+   *  local-attachment block; runtime upload support is a separate seam. */
+  | { kind: 'runtime' }
   /** Store not hydrated / worktree unknown. Callers must not attach local
    *  paths in this window — the worktree may turn out to be remote, and the
    *  agent would silently receive paths it cannot read (see #6648). */
@@ -77,17 +66,8 @@ export function resolveNativeChatAttachmentOwnerForWorktree(
   worktreeId: string,
   terminalTabId?: string
 ): NativeChatAttachmentOwner {
-  const worktreePath = terminalTabId
-    ? resolveNativeChatFileLinkContext(state, terminalTabId)?.worktreePath
-    : state.getKnownWorktreeById(worktreeId)?.path
-  const runtimeEnvironmentId = getRuntimeEnvironmentIdForWorktree(state, worktreeId)
-  if (runtimeEnvironmentId) {
-    // Why the path gate: the runtime drop upload destinations on
-    // `${worktreePath}/.orca/drops`, so an unresolved path is not-ready rather
-    // than an upload aimed at the wrong machine.
-    return worktreePath
-      ? { kind: 'runtime', environmentId: runtimeEnvironmentId, worktreeId, worktreePath }
-      : { kind: 'not-ready' }
+  if (getRuntimeEnvironmentIdForWorktree(state, worktreeId)) {
+    return { kind: 'runtime' }
   }
   const connectionId = getConnectionIdFromState(state, worktreeId)
   if (connectionId === undefined) {
@@ -96,6 +76,9 @@ export function resolveNativeChatAttachmentOwnerForWorktree(
   if (connectionId === null) {
     return { kind: 'local' }
   }
+  const worktreePath = terminalTabId
+    ? resolveNativeChatFileLinkContext(state, terminalTabId)?.worktreePath
+    : state.getKnownWorktreeById(worktreeId)?.path
   if (!worktreePath) {
     return { kind: 'not-ready' }
   }
@@ -169,52 +152,6 @@ export async function uploadNativeChatAttachmentPaths(
     })
     reportTerminalDropUploadSkipsAndFailures(skipped, failed)
     return resolvedPaths
-  } catch (err) {
-    toast.error(extractIpcErrorMessage(err, 'Failed to upload files.'))
-    return null
-  } finally {
-    toast.dismiss(pending)
-  }
-}
-
-/**
- * Upload client-local paths into `${worktreePath}/.orca/drops` on the runtime
- * host and return the runtime paths the agent can read (input order preserved),
- * mirroring the SSH upload above. Returns null when the import itself failed;
- * per-file skips/failures surface through the shared drop toasts.
- */
-export async function uploadNativeChatRuntimeAttachmentPaths(args: {
-  paths: string[]
-  owner: NativeChatRuntimeAttachmentOwner
-  settings: NativeChatAttachmentOwnerState['settings']
-  assertCurrent?: () => void
-}): Promise<string[] | null> {
-  const { paths, owner } = args
-  const pending = toast.loading(
-    translate(
-      'components.native-chat.composer.uploadingAttachmentsRuntime',
-      'Uploading {{value0}} file(s) to the runtime…',
-      { value0: paths.length }
-    )
-  )
-  try {
-    const { results } = await importExternalPathsToRuntime(
-      {
-        // Why: drops into an existing worktree follow the worktree's runtime
-        // owner, not whichever host the sidebar currently has focused.
-        settings: { ...args.settings, activeRuntimeEnvironmentId: owner.environmentId },
-        worktreeId: owner.worktreeId,
-        worktreePath: owner.worktreePath
-      },
-      paths,
-      joinRuntimeTerminalDropDir(owner.worktreePath),
-      { assertCurrent: args.assertCurrent }
-    )
-    reportTerminalDropUploadSkipsAndFailures(
-      results.filter((result) => result.status === 'skipped'),
-      results.filter((result) => result.status === 'failed')
-    )
-    return results.filter((result) => result.status === 'imported').map((result) => result.destPath)
   } catch (err) {
     toast.error(extractIpcErrorMessage(err, 'Failed to upload files.'))
     return null

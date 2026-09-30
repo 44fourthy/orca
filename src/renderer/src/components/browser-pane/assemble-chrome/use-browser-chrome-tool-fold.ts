@@ -62,37 +62,33 @@ export function useBrowserChromeToolFold(
   const pendingRef = useRef<(RowMeasure & { level: number }) | null>(null)
 
   const checkRef = useRef<() => void>(() => {})
-  // Why an effect: a render-time ref write can leak from a render React discards. Declared first so
-  // the check effects below always call this commit's closure.
-  useLayoutEffect(() => {
-    checkRef.current = () => {
-      if (freedRef.current.stagesKey !== stagesKey) {
-        freedRef.current = { stagesKey, widths: [] }
-        pendingRef.current = null
-      }
-      const measure = measureRow(rowRef.current)
-      if (!measure) {
-        return
-      }
-      const freed = freedRef.current.widths
-      const pending = pendingRef.current
-      if (pending && pending.level === level) {
-        freed[level - 1] = measure.address - pending.address + (pending.overflow - measure.overflow)
-        pendingRef.current = null
-      }
-      const shortfall =
-        Math.max(0, BROWSER_CHROME_ADDRESS_MIN_WIDTH_PX - measure.address) + measure.overflow
-      if (shortfall > 0.5 && level < stages.length) {
-        pendingRef.current = { ...measure, level: level + 1 }
-        setFoldedCount(level + 1)
-        return
-      }
-      const slack = measure.address - BROWSER_CHROME_ADDRESS_MIN_WIDTH_PX
-      if (shortfall <= 0.5 && level > 0 && slack >= (freed[level - 1] ?? 0)) {
-        setFoldedCount(level - 1)
-      }
+  checkRef.current = () => {
+    if (freedRef.current.stagesKey !== stagesKey) {
+      freedRef.current = { stagesKey, widths: [] }
+      pendingRef.current = null
     }
-  })
+    const measure = measureRow(rowRef.current)
+    if (!measure) {
+      return
+    }
+    const freed = freedRef.current.widths
+    const pending = pendingRef.current
+    if (pending && pending.level === level) {
+      freed[level - 1] = measure.address - pending.address + (pending.overflow - measure.overflow)
+      pendingRef.current = null
+    }
+    const shortfall =
+      Math.max(0, BROWSER_CHROME_ADDRESS_MIN_WIDTH_PX - measure.address) + measure.overflow
+    if (shortfall > 0.5 && level < stages.length) {
+      pendingRef.current = { ...measure, level: level + 1 }
+      setFoldedCount(level + 1)
+      return
+    }
+    const slack = measure.address - BROWSER_CHROME_ADDRESS_MIN_WIDTH_PX
+    if (shortfall <= 0.5 && level > 0 && slack >= (freed[level - 1] ?? 0)) {
+      setFoldedCount(level - 1)
+    }
+  }
 
   // Why layout effect: each fold step re-measures before paint, so a squeeze never flashes clipped.
   useLayoutEffect(() => {

@@ -11,8 +11,7 @@ export function useClientHostedBrowserMarkup({
   placement,
   isActive,
   unavailable,
-  showFailureOverlay,
-  toolLocked = false
+  showFailureOverlay
 }: {
   webviewRef: RefObject<Electron.WebviewTag | null>
   browserPageId: string
@@ -21,12 +20,9 @@ export function useClientHostedBrowserMarkup({
   isActive: boolean
   unavailable: boolean
   showFailureOverlay: boolean
-  /** True while the pane's other in-guest tool (the element picker) owns the page. */
-  toolLocked?: boolean
 }) {
   const markup = useBrowserPageMarkupCapture(webviewRef)
-  const disabled =
-    !isActive || placement === null || unavailable || showFailureOverlay || toolLocked
+  const disabled = !isActive || placement === null || unavailable || showFailureOverlay
   const showOverlay = !disabled && markup.isActive && markup.baseImage !== null
   const browserHostClientId = placement?.browserHostClientId
   const browserHostGeneration = placement?.browserHostGeneration
@@ -68,7 +64,6 @@ export function useClientHostedBrowserMarkup({
   ])
 
   return {
-    isActive: markup.isActive,
     drawButton: (
       <MarkupDrawButton
         onClick={() => (markup.isActive ? markup.cancel() : void markup.start())}

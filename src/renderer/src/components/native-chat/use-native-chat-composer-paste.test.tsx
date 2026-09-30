@@ -189,20 +189,6 @@ const sshOwner: NativeChatAttachmentOwner = {
   expectedSshConnectionGeneration: 4
 }
 
-const runtimeOwner: NativeChatAttachmentOwner = {
-  kind: 'runtime',
-  environmentId: 'env-1',
-  worktreeId: 'wt-1',
-  worktreePath: '/remote/wt'
-}
-
-function ownerOfKind(kind: NativeChatAttachmentOwner['kind']): NativeChatAttachmentOwner {
-  if (kind === 'ssh') {
-    return sshOwner
-  }
-  return kind === 'runtime' ? runtimeOwner : { kind }
-}
-
 afterEach(() => {
   root?.unmount()
   root = null
@@ -210,6 +196,26 @@ afterEach(() => {
 })
 
 describe('useNativeChatComposerPaste', () => {
+  it('does not save a clipboard image locally for a remote runtime', async () => {
+    mocks.clipboardHasImage.mockResolvedValue(true)
+    const setNotice = vi.fn()
+    const store = createChipStore()
+    const probe = await renderProbe({
+      resolveAttachmentOwner: () => ({ kind: 'runtime' }),
+      store,
+      setNotice
+    })
+
+    await act(async () => probe.latest().pasteFromClipboard())
+
+    expect(setNotice).toHaveBeenCalledWith(
+      'Local attachments are not available for remote sessions.'
+    )
+    expect(mocks.saveClipboardImageAsTempFile).not.toHaveBeenCalled()
+    expect(mocks.readClipboardImageThumbnail).not.toHaveBeenCalled()
+    expect(store.chips).toHaveLength(0)
+  })
+
   it('surfaces a failed SSH image save through the composer notice', async () => {
     mocks.saveClipboardImageAsTempFile.mockRejectedValue(
       new Error('Remote connection dropped. Click Reconnect on the SSH target before retrying.')
@@ -477,21 +483,21 @@ describe('composer paste intake regressions', () => {
       const insertTypedText = vi.fn(() => true)
       const setNotice = vi.fn()
       const probe = await renderProbe({
-        resolveAttachmentOwner: () => ownerOfKind(kind),
+        resolveAttachmentOwner: () => (kind === 'ssh' ? sshOwner : { kind }),
         insertTypedText,
         setNotice
       })
       await act(async () => probe.latest().pasteFromClipboard())
       expect(insertTypedText).toHaveBeenCalledExactlyOnceWith('안녕하세요\nhello')
       expect(setNotice.mock.calls.filter(([notice]) => notice !== null)).toHaveLength(0)
-      if (kind === 'not-ready') {
+      if (kind === 'runtime' || kind === 'not-ready') {
         expect(mocks.saveClipboardImageAsTempFile).not.toHaveBeenCalled()
       }
     }
   )
 
   it.each([false, true, null, 'error'] as const)(
-    'preserves text on a not-ready worktree when image presence is %s',
+    'preserves remote text when image presence is %s',
     async (presence) => {
       if (presence === 'error') {
         mocks.clipboardHasImage.mockRejectedValue(new Error('denied'))
@@ -502,7 +508,7 @@ describe('composer paste intake regressions', () => {
       const insertTypedText = vi.fn(() => true)
       const setNotice = vi.fn()
       const probe = await renderProbe({
-        resolveAttachmentOwner: () => ({ kind: 'not-ready' }),
+        resolveAttachmentOwner: () => ({ kind: 'runtime' }),
         insertTypedText,
         setNotice
       })
@@ -514,14 +520,17 @@ describe('composer paste intake regressions', () => {
     }
   )
 
-  it.each(['not-ready'] as const)('still explains an image-only menu paste on %s', async (kind) => {
-    mocks.clipboardHasImage.mockResolvedValue(true)
-    const setNotice = vi.fn()
-    const probe = await renderProbe({ resolveAttachmentOwner: () => ({ kind }), setNotice })
-    await act(async () => probe.latest().pasteFromClipboard())
-    expect(mocks.clipboardHasImage).toHaveBeenCalledTimes(1)
-    expect(setNotice.mock.calls.filter(([notice]) => notice !== null)).toHaveLength(1)
-  })
+  it.each(['runtime', 'not-ready'] as const)(
+    'still explains an image-only menu paste on %s',
+    async (kind) => {
+      mocks.clipboardHasImage.mockResolvedValue(true)
+      const setNotice = vi.fn()
+      const probe = await renderProbe({ resolveAttachmentOwner: () => ({ kind }), setNotice })
+      await act(async () => probe.latest().pasteFromClipboard())
+      expect(mocks.clipboardHasImage).toHaveBeenCalledTimes(1)
+      expect(setNotice.mock.calls.filter(([notice]) => notice !== null)).toHaveLength(1)
+    }
+  )
 
   it.each(['local', 'ssh', 'runtime', 'not-ready'] as const)(
     'preserves mixed event text with %s attachments and deduplicates capture',
@@ -529,7 +538,7 @@ describe('composer paste intake regressions', () => {
       const insertTypedText = vi.fn(() => true)
       const setNotice = vi.fn()
       const probe = await renderProbe({
-        resolveAttachmentOwner: () => ownerOfKind(kind),
+        resolveAttachmentOwner: () => (kind === 'ssh' ? sshOwner : { kind }),
         insertTypedText,
         setNotice
       })
@@ -612,7 +621,7 @@ describe('composer paste intake regressions', () => {
 it('inserts event text locally without any clipboard API access', async () => {
   const insertTypedText = vi.fn(() => true)
   const probe = await renderProbe({
-    resolveAttachmentOwner: () => runtimeOwner,
+    resolveAttachmentOwner: () => ({ kind: 'runtime' }),
     insertTypedText
   })
   const data = new DataTransfer()
@@ -630,7 +639,7 @@ it('refuses oversized event text without inserting it', async () => {
   const insertTypedText = vi.fn(() => true)
   const setNotice = vi.fn()
   const probe = await renderProbe({
-    resolveAttachmentOwner: () => runtimeOwner,
+    resolveAttachmentOwner: () => ({ kind: 'runtime' }),
     insertTypedText,
     setNotice
   })
@@ -811,7 +820,7 @@ describe('file-manager copies', () => {
       [true, 0, 1],
       [false, 1, 0]
     ])(
-      'on a not-ready worktree, image presence %s decides between the refusal and the label',
+      'on a remote runtime, image presence %s decides between the refusal and the label',
       async (hasImage, inserts, notices) => {
         mocks.readClipboardText.mockResolvedValue('shot.png')
         mocks.readClipboardFilePaths.mockResolvedValue(['/Users/me/shot.png'])
@@ -819,7 +828,7 @@ describe('file-manager copies', () => {
         const insertTypedText = vi.fn(() => true)
         const setNotice = vi.fn()
         const probe = await renderProbe({
-          resolveAttachmentOwner: () => ({ kind: 'not-ready' }),
+          resolveAttachmentOwner: () => ({ kind: 'runtime' }),
           insertTypedText,
           setNotice
         })

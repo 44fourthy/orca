@@ -44,10 +44,7 @@ export function useNativeChatComposerAttachments({
   clearImageAttachments: () => void
   flushPendingAttachments: () => void
   removeImageAttachment: (id: string) => void
-  beginPendingImageAttachment: (
-    previewUrl?: string,
-    options?: { targetOwned?: boolean }
-  ) => string | null
+  beginPendingImageAttachment: (previewUrl?: string) => string | null
   resolvePendingImageAttachment: (id: string, path: string, connectionId?: string | null) => void
   dropPendingImageAttachment: (id: string) => void
 } {
@@ -140,14 +137,11 @@ export function useNativeChatComposerAttachments({
   // Placeholder chip shown the instant a paste starts, so a clipboard image that
   // takes a beat to save (or upload over SSH) never reads as a dropped paste.
   const beginPendingImageAttachment = useCallback(
-    (previewUrl?: string, options?: { targetOwned?: boolean }): string | null => {
+    (previewUrl?: string): string | null => {
       if (disabledRef.current) {
         return null
       }
-      // Why targetOwned: a paste against a runtime-owned pane saves through the
-      // runtime's clipboard importer, so the settled path is one the runtime
-      // host itself can read — client-locality is what the gate exists to stop.
-      if (attachmentTargetBlocked(options?.targetOwned === true)) {
+      if (attachmentTargetBlocked()) {
         noteAttachmentTargetBlocked()
         return null
       }
