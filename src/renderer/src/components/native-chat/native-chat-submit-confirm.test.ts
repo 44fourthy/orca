@@ -78,28 +78,30 @@ describe('confirmNativeChatSubmit', () => {
     vi.useRealTimers()
   })
 
-  it('does nothing extra when the Enter took', () => {
+  it('does nothing extra when the Enter took', async () => {
     const { resendEnter, done } = run([claudeScreen('')])
-    vi.advanceTimersByTime(NATIVE_CHAT_SUBMIT_CHECK_MS)
+    await vi.advanceTimersByTimeAsync(NATIVE_CHAT_SUBMIT_CHECK_MS)
     expect(resendEnter).not.toHaveBeenCalled()
     expect(done).toHaveBeenCalledTimes(1)
     vi.useRealTimers()
   })
 
-  it('re-sends Enter for a parked send, then finishes once it clears', () => {
+  it('re-sends Enter for a parked send, then finishes once it clears', async () => {
     const { resendEnter, done } = run([claudeScreen('fix the drawer'), claudeScreen('')])
-    vi.advanceTimersByTime(NATIVE_CHAT_SUBMIT_CHECK_MS)
+    await vi.advanceTimersByTimeAsync(NATIVE_CHAT_SUBMIT_CHECK_MS)
     expect(resendEnter).toHaveBeenCalledTimes(1)
     expect(done).not.toHaveBeenCalled()
-    vi.advanceTimersByTime(NATIVE_CHAT_SUBMIT_CHECK_MS)
+    await vi.advanceTimersByTimeAsync(NATIVE_CHAT_SUBMIT_CHECK_MS)
     expect(resendEnter).toHaveBeenCalledTimes(1)
     expect(done).toHaveBeenCalledTimes(1)
     vi.useRealTimers()
   })
 
-  it('gives up after the retry budget', () => {
+  it('gives up after the retry budget', async () => {
     const { resendEnter, done } = run([claudeScreen('fix the drawer')])
-    vi.advanceTimersByTime(NATIVE_CHAT_SUBMIT_CHECK_MS * (NATIVE_CHAT_SUBMIT_RETRIES + 2))
+    await vi.advanceTimersByTimeAsync(
+      NATIVE_CHAT_SUBMIT_CHECK_MS * (NATIVE_CHAT_SUBMIT_RETRIES + 2)
+    )
     expect(resendEnter).toHaveBeenCalledTimes(NATIVE_CHAT_SUBMIT_RETRIES)
     expect(done).toHaveBeenCalledTimes(1)
     vi.useRealTimers()

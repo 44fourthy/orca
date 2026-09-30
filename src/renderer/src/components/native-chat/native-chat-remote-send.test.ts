@@ -16,7 +16,11 @@ vi.mock('@/runtime/runtime-terminal-stream', () => ({
   getRemoteRuntimePtyEnvironmentId: mocks.getRemoteRuntimePtyEnvironmentId
 }))
 
-import { remoteNativeChatSendTarget, sendRemoteNativeChatPrompt } from './native-chat-remote-send'
+import {
+  readRemoteNativeChatScreen,
+  remoteNativeChatSendTarget,
+  sendRemoteNativeChatPrompt
+} from './native-chat-remote-send'
 
 describe('remoteNativeChatSendTarget', () => {
   beforeEach(() => {
@@ -80,5 +84,32 @@ describe('sendRemoteNativeChatPrompt', () => {
   it('reports a failed call as unknown, never as a definite failure', async () => {
     mocks.callRuntimeRpc.mockRejectedValue(new Error('socket closed'))
     await expect(sendRemoteNativeChatPrompt(target, 'x')).resolves.toBe('unknown')
+  })
+})
+
+describe('readRemoteNativeChatScreen', () => {
+  const target = { environmentId: 'env-colors', terminal: 'term_a' }
+
+  it("asks the host for the terminal's rendered screen", async () => {
+    mocks.callRuntimeRpc.mockResolvedValue({
+      terminal: { source: 'screen', tail: ['─', '❯ ok ship it', '─'] }
+    })
+    await expect(readRemoteNativeChatScreen(target)).resolves.toBe('─\n❯ ok ship it\n─')
+    expect(mocks.callRuntimeRpc).toHaveBeenCalledWith(
+      { kind: 'environment', environmentId: 'env-colors' },
+      'terminal.read',
+      { terminal: 'term_a', screen: true },
+      expect.any(Object)
+    )
+  })
+
+  it('returns null for an older host that answered with a stream read', async () => {
+    mocks.callRuntimeRpc.mockResolvedValue({ terminal: { tail: ['❯ ok ship it'] } })
+    await expect(readRemoteNativeChatScreen(target)).resolves.toBeNull()
+  })
+
+  it('returns null when the read fails', async () => {
+    mocks.callRuntimeRpc.mockRejectedValue(new Error('runtime_timeout'))
+    await expect(readRemoteNativeChatScreen(target)).resolves.toBeNull()
   })
 })
