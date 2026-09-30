@@ -35,6 +35,22 @@ function composerContinuationIsEmpty(lines: string[], promptIndex: number, glyph
  * Whether the rendered composer prompt is observably empty. Placeholder text,
  * unrelated edits, and unreadable screens are all unconfirmed.
  */
+/** Text on the rendered composer's prompt line, or null when no prompt line is
+ *  visible (unreadable screen, or a dialog has replaced the composer). */
+export function agentComposerPromptText(screen: string | null | undefined): string | null {
+  if (!screen) {
+    return null
+  }
+  const lines = stripScrollbackAnsi(screen).split('\n')
+  for (let index = lines.length - 1; index >= 0; index -= 1) {
+    const match = COMPOSER_PROMPT_LINE.exec(lines[index]!)
+    if (match) {
+      return match[2]!
+    }
+  }
+  return null
+}
+
 export function agentInputLineCleared(screen: string | null | undefined): boolean {
   if (!screen) {
     return false
