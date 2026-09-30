@@ -1,16 +1,11 @@
 import { useEffectEvent, useLayoutEffect, useRef, useState } from 'react'
-import { useClientHostedBrowserGrab } from './annotate/use-client-hosted-browser-grab'
-import {
-  ClientHostedBrowserGrabOverlays,
-  ClientHostedBrowserGrabTools
-} from './assemble-chrome/client-hosted-browser-grab-chrome'
 import { BrowserPageZoomIndicator } from './assemble-chrome/browser-page-zoom-indicator'
-import { ClientHostedBrowserPaneNotices } from './assemble-chrome/client-hosted-browser-pane-notices'
 import { useAppStore } from '@/store'
 import type {
   BrowserLoadError,
   BrowserPage as BrowserPageState
 } from '../../../../shared/browser-workspace-types'
+import { toHttpsRecoveryUrl } from '../../../../shared/browser-url'
 import type { RuntimeBrowserClientPlacement } from '../../../../shared/runtime-browser-placement'
 import {
   readBrowserClientPageGuestMetadataIfLive,
@@ -25,8 +20,10 @@ import { useBrowserClientHostedDownloadNotices } from './browser-client-hosted-d
 import { useBrowserClientHostedPopupNotices } from './browser-client-hosted-popup-notices'
 import { useBrowserClientHostedPermissionNotices } from './browser-client-hosted-permission-notices'
 import { useClientHostedBrowserIntroTour } from './use-client-hosted-browser-intro-tour'
+import { ClientHostedBrowserUnavailableNotice } from './client-hosted-browser-unavailable-notice'
 import { watchBrowserClientPageGuestLoss } from './host-guest/browser-client-page-guest-loss'
 import { useRestoredClientHostedRecoveryWindow } from './restored-client-hosted-recovery-window'
+import { useClientHostedBrowserMarkup } from './annotate/use-client-hosted-browser-markup'
 import BrowserFind from './assemble-chrome/BrowserFind'
 import { BrowserNavigationControlRow } from './assemble-chrome/browser-navigation-control-row'
 import BrowserAddressBar from './assemble-chrome/BrowserAddressBar'
@@ -40,12 +37,17 @@ import { getBrowserPageZoomIndicatorState } from './host-guest/browser-page-zoom
 import { useBrowserPageWebviewShortcuts } from './host-guest/use-browser-page-webview-shortcuts'
 import { useClientHostedGuestActivationFocus } from './host-guest/use-client-hosted-guest-activation-focus'
 import { useBrowserPageZoomFeedback } from './host-guest/use-browser-page-zoom-feedback'
+import { BrowserLoadFailureOverlay } from './navigate/browser-load-failure-overlay'
 import { useClientHostedPageUrlSubmission } from './navigate/use-client-hosted-page-url-submission'
 import { convertBrowserPageToWorkspaceDoc } from '@/lib/file-preview'
 import { useBrowserPageReloadActions } from './navigate/use-browser-page-reload-actions'
 import { resolveActiveBrowserLoadFailure } from './navigate/browser-load-failure-for-url'
 import { consumeBrowserPageDeferredNavigation } from './navigate/browser-page-deferred-navigation'
-import { getBrowserDisplayTitle, toDisplayUrl } from './describe-page/browser-page-url-display'
+import {
+  getBrowserDisplayTitle,
+  getOpenableExternalUrl,
+  toDisplayUrl
+} from './describe-page/browser-page-url-display'
 import type {
   BrowserChromeShortcutScope,
   BrowserPageUrlSetter,
@@ -320,19 +322,14 @@ export function ClientHostedBrowserPagePane({
     isDefaultZoom: zoom.browserZoomPercent === zoom.browserDefaultZoomPercent
   })
 
-  const grab = useClientHostedBrowserGrab({
-    browserTab,
-    workspaceId,
-    worktreeId,
-    chromeShortcutScope,
-    isActive,
+  const markup = useClientHostedBrowserMarkup({
+    webviewRef,
+    browserPageId: browserTab.id,
     runtimeEnvironmentId,
     placement,
+    isActive,
     unavailable: Boolean(attachmentError) || restoredPageUnrecovered,
-    showFailureOverlay,
-    pageHostGeneration,
-    viewportRef,
-    webviewRef
+    showFailureOverlay
   })
 
   return (
@@ -380,14 +377,11 @@ export function ClientHostedBrowserPagePane({
           }
           reloadLabel={reload.reloadButtonLabel}
         >
-          <ClientHostedBrowserGrabTools grab={grab} />
+          {markup.drawButton}
         </BrowserNavigationControlRow>
       </div>
-      <div
-        ref={grab.bindViewport}
-        className="relative min-h-0 flex-1 overflow-hidden bg-background"
-      >
-        <ClientHostedBrowserGrabOverlays grab={grab} />
+      <div ref={viewportRef} className="relative min-h-0 flex-1 overflow-hidden bg-background">
+        {markup.overlay}
         <BrowserPageZoomIndicator
           state={browserZoomIndicatorState}
           percent={zoom.browserZoomPercent}
@@ -398,19 +392,35 @@ export function ClientHostedBrowserPagePane({
           webviewRef={webviewRef}
           guestGeneration={pageHostGeneration}
         />
-        <ClientHostedBrowserPaneNotices
-          showFailureOverlay={showFailureOverlay}
-          loadError={browserTab.loadError}
-          failedNavigationUrl={failedNavigationUrl}
-          certificateFailure={certificateFailure}
-          browserPageId={browserTab.id}
-          onRetry={() => reload.runReloadTrigger('reload')}
-          onTryHttps={navigateToUrl}
-          unavailable={Boolean(attachmentError) || restoredPageUnrecovered}
-          runtimeEnvironmentId={runtimeEnvironmentId}
-          worktreeId={worktreeId}
-          lastCommittedUrl={browserTab.url}
-        />
+        {showFailureOverlay && browserTab.loadError ? (
+          <BrowserLoadFailureOverlay
+            loadError={browserTab.loadError}
+            currentUrl={toDisplayUrl(failedNavigationUrl)}
+            httpsRecoveryUrl={toHttpsRecoveryUrl(failedNavigationUrl)}
+            onRetry={() => reload.runReloadTrigger('reload')}
+            onTryHttps={navigateToUrl}
+            onCopy={(url) => void window.api.ui.writeClipboardText(url)}
+            onOpenExternal={(url) => void window.api.shell.openUrl(url)}
+            externalUrl={getOpenableExternalUrl(failedNavigationUrl)}
+            certificateFailure={certificateFailure}
+            expectedBrowserPageId={browserTab.id}
+            // Why: the guest is a local Electron webview on this desktop, so its certificate
+            // decision is a local session decision — the same IPC the local pane proceeds through.
+            onProceedCertificate={(challengeId) =>
+              window.api.browser.proceedCertificate({
+                browserPageId: browserTab.id,
+                challengeId
+              })
+            }
+          />
+        ) : null}
+        {attachmentError || restoredPageUnrecovered ? (
+          <ClientHostedBrowserUnavailableNotice
+            runtimeEnvironmentId={runtimeEnvironmentId}
+            worktreeId={worktreeId}
+            lastCommittedUrl={browserTab.url}
+          />
+        ) : null}
       </div>
     </div>
   )

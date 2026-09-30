@@ -135,15 +135,12 @@ async function probe() {
 }
 
 async function run() {
-  // Why: two Electron cold starts share the runner with the sibling shards; under
-  // that load a probe can exceed 20 s, and the watchdog exit surfaced below as a
-  // confusing "no result" assertion instead of a timeout.
   const timeout = setTimeout(() => {
     writeFileSync(${JSON.stringify(resultPath)}, JSON.stringify({
       error: 'WebRTC egress probe timed out', phase, protectedGuest: ${protectedGuest}
     }))
     app.exit(2)
-  }, 60000)
+  }, 20000)
   await app.whenReady()
   const result = await probe()
   enterPhase('write-result')
@@ -173,7 +170,7 @@ function runProbe(protectedGuest: boolean): ProbeResult {
     platform: process.platform,
     display: env.DISPLAY
   })
-  const run = spawnSync(executable, args, { encoding: 'utf8', env, timeout: 90_000 })
+  const run = spawnSync(executable, args, { encoding: 'utf8', env, timeout: 30_000 })
   const rawResult = existsSync(resultPath) ? readFileSync(resultPath, 'utf8') : 'no result'
   expect(run.error).toBeUndefined()
   expect(run.status, `${rawResult}\n${run.stdout}\n${run.stderr}`).toBe(0)
@@ -196,5 +193,5 @@ describe('browser route WebRTC egress under Electron', () => {
     expect(baseline.packets).toBeGreaterThan(0)
     expect(protectedGuest.policy).toBe('disable_non_proxied_udp')
     expect(protectedGuest.packets).toBe(0)
-  }, 180_000)
+  }, 45_000)
 })

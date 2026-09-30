@@ -8,16 +8,8 @@ const mocks = vi.hoisted(() => ({
   authorizeExternalPath: vi.fn(),
   resolveNativeChatAttachmentOwner: vi.fn(),
   resolveNativeChatAttachmentOwnerForWorktree: vi.fn(),
-  uploadNativeChatAttachmentPaths: vi.fn(),
-  uploadNativeChatRuntimeAttachmentPaths: vi.fn()
+  uploadNativeChatAttachmentPaths: vi.fn()
 }))
-
-const runtimeOwner = {
-  kind: 'runtime' as const,
-  environmentId: 'env-1',
-  worktreeId: 'wt-1',
-  worktreePath: '/remote/wt'
-}
 
 vi.mock('@/store', () => ({
   useAppStore: { getState: () => ({}) }
@@ -29,8 +21,7 @@ vi.mock('./native-chat-attachment-upload', async (importOriginal) => ({
   ...(await importOriginal<typeof AttachmentUploadModule>()),
   resolveNativeChatAttachmentOwner: mocks.resolveNativeChatAttachmentOwner,
   resolveNativeChatAttachmentOwnerForWorktree: mocks.resolveNativeChatAttachmentOwnerForWorktree,
-  uploadNativeChatAttachmentPaths: mocks.uploadNativeChatAttachmentPaths,
-  uploadNativeChatRuntimeAttachmentPaths: mocks.uploadNativeChatRuntimeAttachmentPaths
+  uploadNativeChatAttachmentPaths: mocks.uploadNativeChatAttachmentPaths
 }))
 
 import { useNativeChatExternalAttachments } from './use-native-chat-external-attachments'
@@ -187,7 +178,7 @@ describe('useNativeChatExternalAttachments', () => {
 
   it('does not attach local paths when the owner changes during authorization', async () => {
     const authorization = deferred<void>()
-    let owner: { kind: 'local' } | typeof runtimeOwner = { kind: 'local' }
+    let owner: { kind: 'local' } | { kind: 'runtime' } = { kind: 'local' }
     mocks.resolveNativeChatAttachmentOwner.mockImplementation(() => owner)
     mocks.authorizeExternalPath.mockReturnValueOnce(authorization.promise)
     const attachResolvedPaths = vi.fn()
@@ -198,7 +189,7 @@ describe('useNativeChatExternalAttachments', () => {
     })
 
     act(() => probe.latest().attachExternalPaths(['/external/a.png', '/external/b.png']))
-    owner = runtimeOwner
+    owner = { kind: 'runtime' }
     await act(async () => authorization.resolve())
 
     expect(attachResolvedPaths).not.toHaveBeenCalled()
@@ -213,7 +204,7 @@ describe('useNativeChatExternalAttachments', () => {
   // and a path attached to a host that no longer owns it.
   it('reports a one-file drop whose owner changes during its authorization', async () => {
     const authorization = deferred<void>()
-    let owner: { kind: 'local' } | typeof runtimeOwner = { kind: 'local' }
+    let owner: { kind: 'local' } | { kind: 'runtime' } = { kind: 'local' }
     mocks.resolveNativeChatAttachmentOwner.mockImplementation(() => owner)
     mocks.authorizeExternalPath.mockReturnValueOnce(authorization.promise)
     const attachResolvedPaths = vi.fn()
@@ -224,7 +215,7 @@ describe('useNativeChatExternalAttachments', () => {
     })
 
     act(() => probe.latest().attachExternalPaths(['/external/only.pdf']))
-    owner = runtimeOwner
+    owner = { kind: 'runtime' }
     await act(async () => authorization.resolve())
 
     expect(attachResolvedPaths).not.toHaveBeenCalled()
@@ -363,34 +354,17 @@ describe('useNativeChatExternalAttachments', () => {
     expect(attachResolvedPaths).not.toHaveBeenCalled()
   })
 
-  it('uploads a runtime drop and attaches the runtime-owned paths', async () => {
-    mocks.resolveNativeChatAttachmentOwner.mockReturnValue(runtimeOwner)
-    mocks.uploadNativeChatRuntimeAttachmentPaths.mockResolvedValue(['/remote/wt/.orca/drops/a.txt'])
+  it('does not attach client-local paths to a remote runtime', async () => {
+    mocks.resolveNativeChatAttachmentOwner.mockReturnValue({ kind: 'runtime' })
     const attachResolvedPaths = vi.fn()
     const setNotice = vi.fn()
     const probe = await renderProbe({ attachResolvedPaths, setNotice })
     await act(async () => {
       probe.latest().attachExternalPaths(['/local/a.txt'])
     })
-    expect(mocks.uploadNativeChatRuntimeAttachmentPaths).toHaveBeenCalledWith(
-      expect.objectContaining({ paths: ['/local/a.txt'], owner: runtimeOwner })
+    expect(setNotice).toHaveBeenCalledWith(
+      'Local attachments are not available for remote sessions.'
     )
-    // Uploaded into the runtime's own drop dir, so the paths are target-owned.
-    expect(attachResolvedPaths).toHaveBeenCalledWith(['/remote/wt/.orca/drops/a.txt'], undefined, {
-      targetOwnerIsCurrent: expect.any(Function)
-    })
-  })
-
-  it('reports an unreadable runtime drop when the upload imports nothing', async () => {
-    mocks.resolveNativeChatAttachmentOwner.mockReturnValue(runtimeOwner)
-    mocks.uploadNativeChatRuntimeAttachmentPaths.mockResolvedValue(null)
-    const attachResolvedPaths = vi.fn()
-    const setNotice = vi.fn()
-    const probe = await renderProbe({ attachResolvedPaths, setNotice })
-    await act(async () => {
-      probe.latest().attachExternalPaths(['/local/a.txt'])
-    })
-    expect(setNotice).toHaveBeenCalledWith("Couldn't read the dropped files.")
     expect(attachResolvedPaths).not.toHaveBeenCalled()
   })
 
