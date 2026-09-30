@@ -3,6 +3,8 @@
 // byte builders in native-chat-send.ts so those stay IO-free and unit-testable.
 
 import { sendNativeChatObservedWrites } from './native-chat-observed-send'
+import { remoteNativeChatSendTarget } from './native-chat-remote-send'
+import { sendNativeChatRemoteMessage } from './native-chat-remote-chat-send'
 import {
   sendRuntimePtyInput,
   sendRuntimePtyInputVerified
@@ -61,6 +63,10 @@ export function sendNativeChatMessage(
   text: string,
   options?: NativeChatSendOptions
 ): NativeChatSendHandle {
+  const remote = remoteNativeChatSendTarget(settings, ptyId)
+  if (remote) {
+    return sendNativeChatRemoteMessage(settings, ptyId, text, remote, options)
+  }
   if (options?.onWriteRejected) {
     return sendNativeChatObservedWrites(
       settings,

@@ -31,6 +31,8 @@ export type NativeChatSendOptions = {
    * pasting on top of residue.
    */
   confirmCleared?: () => boolean
+  /** Reads the agent screen so a Remote Orca Server send can confirm its Enter took. */
+  readScreen?: () => string | null | undefined
 }
 
 type RuntimeSettings = ReturnType<typeof getSettingsForAgentTabRuntimeOwner>
