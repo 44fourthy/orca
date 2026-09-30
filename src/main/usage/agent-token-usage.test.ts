@@ -44,10 +44,10 @@ const codexLocation = {
   outputTokens: 20,
   reasoningOutputTokens: 5,
   totalTokens: 120,
+  hasInferredPricing: false,
   longContextInputTokens: 0,
   longContextCachedInputTokens: 0,
   longContextOutputTokens: 0,
-  hasInferredPricing: false,
   estimatedCostUsd: 1
 }
 const codex: CodexUsageSession = {
@@ -66,10 +66,10 @@ const codex: CodexUsageSession = {
   totalOutputTokens: 40,
   totalReasoningOutputTokens: 10,
   totalTokens: 240,
+  hasInferredPricing: false,
   longContextInputTokens: 0,
   longContextCachedInputTokens: 0,
   longContextOutputTokens: 0,
-  hasInferredPricing: false,
   locationBreakdown: [codexLocation, { ...codexLocation, worktreeId: null }],
   modelBreakdown: [],
   locationModelBreakdown: []

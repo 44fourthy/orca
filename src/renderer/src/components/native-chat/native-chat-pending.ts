@@ -25,6 +25,10 @@ import {
 export type NativeChatPendingSend = {
   /** Renderer-minted id, unique per send, used as the list key. */
   id: string
+  /** Definite send outcome; absent while the send is simply awaiting its transcript row. */
+  delivery?: 'unconfirmed' | 'rejected'
+  /** When a write's acknowledgment was lost, so a remount keeps the original hold deadline. */
+  writeUnconfirmedAt?: number
   /** The exact draft text the user submitted. */
   text: string
   /** Image paths that were sent through the TUI image attachment paste path. */
@@ -48,15 +52,6 @@ export type NativeChatPendingSendScope = {
 }
 
 const PENDING_SEND_LIMIT = 8
-
-/**
- * How long an unconfirmed echo may sit while the agent is idle before the view
- * marks it not delivered. The submit is a delayed Enter typed into the agent's
- * TUI, which can miss while it is mid-render (stablyai/orca#14308); a delivered
- * prompt makes the agent work, so an idle agent past this window means the
- * message never reached it and the reader needs to know that.
- */
-export const PENDING_SEND_NOT_DELIVERED_MS = 20_000
 const pendingSendCache = new Map<string, NativeChatPendingSend[]>()
 let pendingSendCounter = 0
 
@@ -89,7 +84,11 @@ export function appendPendingSendCache(
   scope: NativeChatPendingSendScope,
   entry: NativeChatPendingSend
 ): NativeChatPendingSend[] {
-  const existing = readPendingSendCache(scope)
+  const contentKey = nativeChatPendingContentKey(entry)
+  // Why: a resend replaces its failed copy; kept, that copy would claim the resend's row and pin it.
+  const existing = readPendingSendCache(scope).filter(
+    (candidate) => !candidate.delivery || nativeChatPendingContentKey(candidate) !== contentKey
+  )
   const next = assignNativeChatPendingOccurrence(existing, entry)
   return writePendingSendCache(scope, [...existing, next])
 }
@@ -113,16 +112,8 @@ function messagesAfterPendingBoundary(
   if (boundaryIndex !== -1) {
     return messages.slice(boundaryIndex + 1)
   }
-  // The boundary row paged out of a bounded read — routine in a long session.
-  // Filtering by time is only sound when the boundary's own timestamp is known:
-  // that one is in the transcript host's clock, the same domain as the rows.
-  // Without it the filter compares the client clock against the host's and can
-  // exclude the very row that proves delivery, stranding the echo at the end of
-  // the chat forever. Unanchored, fall back to the whole window — occurrence
-  // counting already keeps an older identical prompt from retiring a newer send.
-  if (pending.afterMessageTimestamp == null) {
-    return messages
-  }
+  // A bounded authoritative read can page the boundary out. Fall back to the
+  // send time instead of matching an arbitrary older identical prompt.
   return messages.filter((message) => messageIsAfterPendingTimestamp(message, pending))
 }
 

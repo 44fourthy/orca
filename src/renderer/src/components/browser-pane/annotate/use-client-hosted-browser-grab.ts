@@ -1,4 +1,11 @@
-import { useCallback, useEffect, useRef, useState, type MutableRefObject, type RefObject } from 'react'
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type MutableRefObject,
+  type RefObject
+} from 'react'
 import { useShortcutLabel } from '@/hooks/useShortcutLabel'
 import { createBrowserUuid } from '@/lib/browser-uuid'
 import type { RuntimeBrowserClientPlacement } from '../../../../../shared/runtime-browser-placement'

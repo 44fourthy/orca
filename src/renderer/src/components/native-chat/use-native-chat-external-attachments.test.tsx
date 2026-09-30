@@ -365,9 +365,7 @@ describe('useNativeChatExternalAttachments', () => {
 
   it('uploads a runtime drop and attaches the runtime-owned paths', async () => {
     mocks.resolveNativeChatAttachmentOwner.mockReturnValue(runtimeOwner)
-    mocks.uploadNativeChatRuntimeAttachmentPaths.mockResolvedValue([
-      '/remote/wt/.orca/drops/a.txt'
-    ])
+    mocks.uploadNativeChatRuntimeAttachmentPaths.mockResolvedValue(['/remote/wt/.orca/drops/a.txt'])
     const attachResolvedPaths = vi.fn()
     const setNotice = vi.fn()
     const probe = await renderProbe({ attachResolvedPaths, setNotice })
@@ -378,11 +376,9 @@ describe('useNativeChatExternalAttachments', () => {
       expect.objectContaining({ paths: ['/local/a.txt'], owner: runtimeOwner })
     )
     // Uploaded into the runtime's own drop dir, so the paths are target-owned.
-    expect(attachResolvedPaths).toHaveBeenCalledWith(
-      ['/remote/wt/.orca/drops/a.txt'],
-      undefined,
-      { targetOwnerIsCurrent: expect.any(Function) }
-    )
+    expect(attachResolvedPaths).toHaveBeenCalledWith(['/remote/wt/.orca/drops/a.txt'], undefined, {
+      targetOwnerIsCurrent: expect.any(Function)
+    })
   })
 
   it('reports an unreadable runtime drop when the upload imports nothing', async () => {

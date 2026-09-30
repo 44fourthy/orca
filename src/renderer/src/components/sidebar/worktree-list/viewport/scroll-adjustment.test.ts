@@ -225,7 +225,7 @@ describe('getScrollTopToRevealBounds', () => {
         },
         GROUP_HEADER_ROW_HEIGHT
       )
-    ).toBe(100 - GROUP_HEADER_ROW_HEIGHT)
+    ).toBe(72)
   })
 
   it('includes extra reveal clearance for the highlight ring', () => {
@@ -240,7 +240,7 @@ describe('getScrollTopToRevealBounds', () => {
         },
         WORKTREE_SIDEBAR_REVEAL_TOP_INSET
       )
-    ).toBe(100 - WORKTREE_SIDEBAR_REVEAL_TOP_INSET)
+    ).toBe(66)
   })
 
   it('does not scroll when the bounds are below the sticky header', () => {
@@ -307,10 +307,8 @@ describe('estimateRenderRowSize', () => {
       secondaryHeaderIndex
     )
 
-    // Secondary group headers carry the inter-group top margin on top of the row height.
-    const secondaryHeaderSize = GROUP_HEADER_ROW_HEIGHT + 4
-    expect(inactiveSize).toBe(secondaryHeaderSize)
-    expect(activeSize).toBe(secondaryHeaderSize)
+    expect(inactiveSize).toBe(32)
+    expect(activeSize).toBe(32)
   })
 
   it('estimates imported worktree line rows with a stable compact height', () => {

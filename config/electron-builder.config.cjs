@@ -74,17 +74,7 @@ const devChannelRepo = isHourlyChannel
     : isAdhocChannel
       ? 'orca-adhoc'
       : null
-// A branded variant ("lif", "colors", "bara") builds one Orca per client: its
-// own product name, bundle id and icon so the copies sit side by side in the
-// Dock. The runtime profile follows the bundle name (configure-process.ts), so
-// each copy owns its own SQLite store, daemon socket and instance lock.
-const rawBuildVariant = (process.env.ORCA_BUILD_VARIANT ?? '').trim().toLowerCase()
-const buildVariant = /^[a-z][a-z0-9-]*$/.test(rawBuildVariant) ? rawBuildVariant : null
-const VARIANT_LABELS = { lif: 'LIF', colors: 'Colors', bara: 'Bara', topline: 'Topline' }
-const productName = buildVariant
-  ? `Orca ${VARIANT_LABELS[buildVariant] ?? buildVariant.charAt(0).toUpperCase() + buildVariant.slice(1)}`
-  : 'Orca'
-const appId = buildVariant ? `com.fourthy.orca.${buildVariant}` : 'com.stablyai.orca'
+const appId = 'com.stablyai.orca'
 const featureWallResources = {
   from: 'resources/onboarding/feature-wall',
   to: 'onboarding/feature-wall'
@@ -182,7 +172,7 @@ const windowsRuntimeResources = existsSync(
 /** @type {import('electron-builder').Configuration} */
 module.exports = {
   appId,
-  productName,
+  productName: 'Orca',
   protocols: [{ name: 'Orca', schemes: ['orca'] }],
   toolsets: { appimage: '1.0.3' },
   ...(devChannelBuildVersion
@@ -237,6 +227,11 @@ module.exports = {
     // Why: out/electron-dev caches `pnpm dev`'s per-branch Electron.app copies (~270MB each).
     // CI never creates it, but packaging on a machine that has run dev would pack them all.
     '!out/electron-dev{,/**/*}',
+    // Why: relayExtraResource already ships out/relay to resources/relay, which is
+    // the only path a packaged build resolves. Packing it again added 14MB and put
+    // relay.js inside app.asar, so a script-heuristic verdict on relay.js took the
+    // whole asar with it as a compound object and gutted the install (#20966, #20972).
+    '!out/relay{,/**/*}',
     '!electron.vite.config.{js,ts,mjs,cjs}',
     '!{.eslintcache,eslint.config.mjs,.prettierignore,.prettierrc.yaml,CHANGELOG.md,README.md}',
     '!{.env,.env.*,.npmrc,pnpm-lock.yaml}',
@@ -506,7 +501,7 @@ module.exports = {
       role: 'Editor',
       rank: 'Alternate'
     })),
-    icon: buildVariant ? `resources/build/icon-${buildVariant}.icns` : 'resources/build/icon.icns',
+    icon: 'resources/build/icon.icns',
     entitlements: 'resources/build/entitlements.mac.plist',
     entitlementsInherit: 'resources/build/entitlements.mac.plist',
     signIgnore: bundledRipgrepMacSignIgnore,

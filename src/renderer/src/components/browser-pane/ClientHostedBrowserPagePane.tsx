@@ -45,10 +45,7 @@ import { convertBrowserPageToWorkspaceDoc } from '@/lib/file-preview'
 import { useBrowserPageReloadActions } from './navigate/use-browser-page-reload-actions'
 import { resolveActiveBrowserLoadFailure } from './navigate/browser-load-failure-for-url'
 import { consumeBrowserPageDeferredNavigation } from './navigate/browser-page-deferred-navigation'
-import {
-  getBrowserDisplayTitle,
-  toDisplayUrl
-} from './describe-page/browser-page-url-display'
+import { getBrowserDisplayTitle, toDisplayUrl } from './describe-page/browser-page-url-display'
 import type {
   BrowserChromeShortcutScope,
   BrowserPageUrlSetter,
